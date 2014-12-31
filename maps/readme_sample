@@ -1,0 +1,74 @@
+#This is a sample file to help demonstrate WiimoteGlue
+#Any of these commands can be entered on STDIN,
+#or loaded from a file.
+#Clearly the # lets you make comments.
+
+#WiimoteGlue works under a system of modes.
+#Each mode has its own control mapping.
+
+#assing sets control mappings, it has this format:
+#   assign <mode> <wii input event> <gamepad output event>
+
+assign nunchuk up up
+assign nunchuk down down
+assign nunchuk left left
+assign nunchuk right right
+
+#the above commands assign the dpad to the virtual dpad when
+#a nunchuk is plugged in. The word nunchuk above refers
+#to the mode "nunchuk is plugged in" while the input "up"
+#refers to the dpad up button on the wiimote.
+#(The nunchuk itself has no dpad!)
+
+assign wiimote up left
+assign wiimote left down
+assign wiimote right up
+assign wiimote down right
+
+#The above commands have assigned the dpad to the virtual dpad
+#when no extension is present. However, it is mapped "sideways".
+
+#Now when a nunchuk is plugged in, the dpad will be mapped 
+#"normally", but as soon as you remove the nunchuk,
+#the dpad will switch to the sideways mapping, without 
+#any extra effort. Pretty handy! Let's add some other buttons:
+
+assign wiimote a south
+assign wiimote b east
+assign wiimote b tr2
+
+#Now when the wiimote is alone, the B button acts like
+#a face button (east). Once the nunchuk is plugged in,
+#the B button becomes the right trigger.
+
+#Hopefully the usefulness is becoming clear.
+#There is one other mode, "classic". It used when either
+#a classic controller is plugged in, or for the Wii U pro
+#controller.
+
+#you can also assign the accelerometers based on mode
+
+assign wiimote accely left_x invert
+
+#This is a useful mapping for tilting a horizontal wiimote
+#left and right. Notice the optional "invert" at the end
+#to reverse the direction.
+#
+#However, even when mapped, the accelerometers are off
+#by default
+
+enable wiimote accel
+#"disable wiimote accel" to turn them off
+
+#Note that wiimote here refers to the mode, not the device.
+#"enable nunchuk accel" would activate the wiimote (and nunchuk)
+#accelerometers when a nunchuk is plugged in.
+
+#"ir" is another feature that is off by default.
+
+#enter in "help" for all commands.
+#enter in "events" to see all recongized event names
+#        for use with the "assign" command.
+#similarly, "features" reminds you about the recognized
+#        features to enable/disable.
+#enter in "modes" to see the different mode names.
