@@ -19,11 +19,20 @@ The Linux kernel driver for wiimotes is pretty handy, but the extension controll
 * Read in control mappings from files.
 * Uses the Linux gamepad API button defintions rather than ambiguous labels like "A","B","X","Y" for the virtual gamepad.
 * Virtual gamepads persist for as long as WiimoteGlue is running, so even software not supporting gamepad hotplugging can be oblivious to Wii remotes connecting/disconnecting.
+* Also creates a virtual keyboard/mouse device that can be mapped.
 * Assuming proper file permissions on input devices, this does not require super-user privileges.
 
 ##Documentation
 
-This README, the help text produced while running WiimoteGlue, and the sample file "maps/readme_sample" are the only documentation at the moment.
+This README, the help text produced while running WiimoteGlue, and the sample file "maps/demo_readme" are the only documentation at the moment.
+
+This README deals mostly with what WiimoteGlue is, and what it does.
+
+The help text in the program gives the specifics of the available commands and their expected formats.
+
+The demo_readme file offers a quick explanation/demonstration on how to map buttons, but does not demonstrate all commands, features.
+
+(The media_control mapping file offers a demo of the keyboard/mouse mapping.)
 
 ##Requirements
 
@@ -47,16 +56,18 @@ You also need to be able to connect your controllers in the first place. This ta
 * Add in rumble support.
 * Allow buttons to be mapped to axes, and vice versa.
 * Improve the control mapping files to be less cumbersome.
-* Add a virtual keyboard/mouse for extra possibilities for remapping, like using a wiimote for media player controls.
 * Way off: add in a GUI or interface for controlling the driver outside of the the driver's STDIN. System tray icon?
-* Support for other extensions like the guitar or drum controllers.
 * A means of calibrating the axes?
 * A means to reallocate Wii devices to the virtual gamepads.
 * Clean up the command line STDIN interface.
+* A reasonable way to let separate controllers have separate control mappings while not making extra work when the same mapping is wanted on all.
+* Clean and document the code in general.
+* A way to store device aliases based on their unique bluetooth adresses.
 
 ##Known Issues
 
-* Though each controller can be in a different mode depending on its extension, there is just one mapping for each mode. (e.g. Player 1 with just a wiimote and player 2 with wiimote/nunchuk will have different control mappings. If Player 1 inserts a nunchuk, they will share the wiimote/nunchuk control mapping.) This is mainly an issue when players are using differently shaped classic controllers.
+* Keyboard/mouse emulation is in early stages. Notably the virtual mouse is picked up by evdev in "relative" mode, when it should be in "absolute" mode.
+* Though each controller can be in a different mode depending on its extension, there is just one mapping for each mode.
 * Sometimes extensions aren't detected, especially when already inserted when a wiimote connects. Unplugging them and re-inserting generally fixes this.
 * Though the Wii U Pro supports changing the button mappings and axis mappings, it does not allow inverting the axes.
 * Number of virtual gamepads is hard-coded to 4.
@@ -116,6 +127,33 @@ For reference:
 Playstation controllers don't even use labels like A,B, or Y but instead use shapes. One of those shapes is "X," and it doesn't line up with any of the three layouts above. Aren't game controllers fun?
 
 BTN_SOUTH is also identified as BTN_GAMEPAD, and is considered the primary button; according to the Linux gamepad API, outputting BTN_GAMEPAD is what makes a gamepad a gamepad. (SDL however has an extra requirement of outputting ABS_X and ABS_Y)
+
+###This fake mouse pointer is all wonky. Is it working right?
+
+The fake mouse is currently auto-detected by evdev, but it starts out in "relative" mode (which is what is right for most mice). We need it to be in "absolute mode"
+
+    xinput --set-mode "WiimoteGlue Virtual Keyboard and Mouse" ABSOLUTE
+
+will fix this, and it needs to be run each time after starting WiimoteGlue. The mouse emulation is a work-in-progress, and hopefully this won't be required in the future.
+
+Also note that the infared and accelerometer readings aren't smoothed at all, so using them for controlling the mouse cursor will be noisy.
+
+###I mapped buttons to the keyboard/mouse, but they aren't doing anything?
+
+Any keyboard or mouse events sent to a virtual gamepad are ignored. You'll need to do one of the following:
+    assign <device name> keyboardmouse
+or
+    slot 1 keyboardmouse
+
+The first takes a particular device (like a wiimote) and assigns it to the keyboard. The second one takes virtual gamepad slot #1 and switches it to point to the virtual keyboard.
+
+To undo this,
+    assign <device name> 1
+or
+    slot 1 gamepad
+depending on what you changed above.
+
+Note that each mode still has exactly one control mapping, regardless of whether the devices are mapped to a fake keyboard or fake gamepad.
 
 ###How do I connect a wiimote?
 
@@ -177,7 +215,11 @@ Not supported. (yet?)
 
 ###Keyboard and mouse mappings?
 
-Not supported. (yet?)
+Still in rough early stages, but the basic functionality is there.
+
+For the full list of recognized key names, look at include/uapi/linux/input.h from the Linux kernel source for all the constants. Most things of the form "KEY_<something>" are recognized if you make it all lowercase.
+
+Or you can look at the ugly huge key name lookup function in commandline.c present in WiimoteGlue.
 
 ###Analog triggers?
 
@@ -222,6 +264,18 @@ As noted above, the kernel driver makes separate devices for different features/
 
 The X11 driver is also handy, but it is designed for emulating a keyboard/mouse instead of a gamepad. Though it allows configuring the button mappings, it is not dynamic and cannot be changed while running. These two aspects make it not the most useful for playing games.
 
+
+###Why all this hassle over switching between the fake gamepads and the fake keyboard?
+
+One could create a virtual device that has all the functionality of a gamepad, keyboard, and mouse all-in-one. However, both mice and gamepads use ABS_X and ABS_Y. If it was one device, I'd need to tell X to ignore or pay attention to ABS_X/Y depending on whether we are in gamepad mode or mouse mode, since most people don't want their gamepads controlling the cursor.
+
+By separating them, the gamepads are automagically picked up as gamepads, the fake keyboard/mouse is picked up as a keyboard/mouse, and not much extra work is needed.
+(When the absolute/relative issue is fixed, it'll be no extra work at all!)
+
+###Why not have WiimoteGlue talk to X directly to emulate the mouse when needed?
+
+* I don't want to deal with X code.
+* With Wayland potentially replacing X in the future, that sort of direct interaction doesn't seem wise. The Linux input system used by WiimoteGlue will likely be relatively stable .
 
 ###Why does WiimoteGlue capture Wii U Pro controllers?
 
