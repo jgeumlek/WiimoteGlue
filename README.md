@@ -141,17 +141,31 @@ Also note that the infared and accelerometer readings aren't smoothed at all, so
 ###I mapped buttons to the keyboard/mouse, but they aren't doing anything?
 
 Any keyboard or mouse events sent to a virtual gamepad are ignored. You'll need to do one of the following:
+
     assign <device name> keyboardmouse
+
 or
+
     slot 1 keyboardmouse
+
 
 The first takes a particular device (like a wiimote) and assigns it to the keyboard. The second one takes virtual gamepad slot #1 and switches it to point to the virtual keyboard.
 
 To undo this,
+
     assign <device name> 1
+
 or
+
     slot 1 gamepad
+
 depending on what you changed above.
+
+Use
+
+    list
+
+to see all device names, and the "1" can be replaced by "2","3", or "4" to affect the other slots instead.
 
 Note that each mode still has exactly one control mapping, regardless of whether the devices are mapped to a fake keyboard or fake gamepad.
 
