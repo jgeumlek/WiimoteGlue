@@ -1,7 +1,10 @@
 #This is a sample file to help demonstrate WiimoteGlue
 #Any of these commands can be entered on STDIN,
 #or loaded from a file.
-#Clearly the # lets you make comments.
+#Clearly the "#" lets you make comments.
+#
+#This demonstration is still a bit confusing...
+#It needs some work!
 
 #WiimoteGlue works under a system of modes.
 #Each mode has its own control mapping.
@@ -15,10 +18,11 @@ assign nunchuk left left
 assign nunchuk right right
 
 #the above commands assign the dpad to the virtual dpad when
-#a nunchuk is plugged in. The word nunchuk above refers
-#to the mode "nunchuk is plugged in" while the input "up"
-#refers to the dpad up button on the wiimote.
-#(The nunchuk itself has no dpad!)
+#a nunchuk is plugged in. 
+#The word nunchuk above refers to 
+#"do this when the nunchuk is plugged in" 
+#Note that "up" still refers to the dpad, which is
+#not on the nunchuk, it is on the wiimote.
 
 assign wiimote up left
 assign wiimote left down
@@ -35,7 +39,8 @@ assign wiimote down right
 
 assign wiimote a south
 assign wiimote b east
-assign wiimote b tr2
+assign nunchuk b tr2
+assign nunchuk a south
 
 #Now when the wiimote is alone, the B button acts like
 #a face button (east). Once the nunchuk is plugged in,
@@ -45,6 +50,10 @@ assign wiimote b tr2
 #There is one other mode, "classic". It used when either
 #a classic controller is plugged in, or for the Wii U pro
 #controller.
+
+#in both modes, the "A" button on the wiimote was
+#assigned to "south", the primary action button
+#on the virtual gamepad.
 
 #you can also assign the accelerometers based on mode
 
