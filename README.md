@@ -17,7 +17,7 @@ The Linux kernel driver for wiimotes is pretty handy, but the extension controll
 * Basic processing of accelerometer or infared data.
 * Basic support of the Wii Balance Board in addition to a standard controller. Surf your way through your games!
 * Read in control mappings from files.
-* Uses the Linux gamepad API button defintions rather than ambiguous labels like "A","B","X","Y" for the virtual gamepad.
+* Uses the Linux gamepad API button defintions rather than ambiguous labels like "A","B","X","Y"  or "Button 0" for the virtual gamepad.
 * Virtual gamepads persist for as long as WiimoteGlue is running, so even software not supporting gamepad hotplugging can be oblivious to Wii remotes connecting/disconnecting.
 * Also creates a virtual keyboard/mouse device that can be mapped.
 * Assuming proper file permissions on input devices, this does not require super-user privileges.
@@ -44,6 +44,8 @@ The demo_readme file offers a quick explanation/demonstration on how to map butt
 * You need to have read permissions on the various wiimote devices, and write permission to uinput.
 
 You also need to be able to connect your controllers in the first place. This task is done by your bluetooth system, not this software. It has been tested on Bluez 5.26 using bluetoothctl. The wiimote plugin for Bluez 4.96 should be sufficient. Various bluetooth GUIs can work, but some don't handle the wiimote pairing peculiarities well. Using the wiimote sync button can work better than pushing 1+2.
+
+See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wiimotes.
 
 ##Future Goals
 
@@ -89,7 +91,7 @@ You also need to be able to connect your controllers in the first place. This ta
 ###What's this about file permissions for the devices?
 WiimoteGlue will fail if you don't have the right permissions, and you likely won't have the right permissions unless you do some extra work. Though not recommended for regular use, running WiimoteGlue as a super-user can be a useful way to try it out before you have the permissions sorted out.
 
-You need write access to uinput to create the virtual gamepads.
+You need write access to uinput to create the virtual gamepads. WiimoteGlue assumes uinput is located at /dev/uinput which might not be true on other distros. If you know where uinput is on your system, change the location at the top of uinput.c
 
 You need read access to the various event devices created by the kernel driver. Either run WiimoteGlue as root (not recommended) or set up some udev rules to automatically change the permissions. I'd recommed creating some sort of "input" group, changing the group ownership of the devices to be that group, and add your user account to that group (Reminder: you need to open a new shell to update your group permissions after adding yourself to the group!)
 
@@ -167,7 +169,7 @@ Use
 
 to see all device names, and the "1" can be replaced by "2","3", or "4" to affect the other slots instead.
 
-Note that each mode still has exactly one control mapping, regardless of whether the devices are mapped to a fake keyboard or fake gamepad.
+Note that each mode still has exactly one control mapping, regardless of whether the devices are mapped to a fake keyboard or fake gamepad. Since the fake keyboard ignores gamepad events and gamepads ignore keyboard events, one device can't simultaneously send keyboard/mouse and gamepad events.
 
 ###How do I connect a wiimote?
 
@@ -185,11 +187,13 @@ In the former case, the bluetooth connection fails. In the latter case, the conn
 
 ###My classic controller d-pad directions are acting like arrow keys?
 
-This is a result of the kernel driver's mapping for the classic controller. The DPAD is indeed mapped to the arrow keys, which means the classic controller is picked up as keyboard. Use "xinput" to disable the classic controller as a keyboard if this poses a problem. "xinput" is also useful if your joysticks are being picked up as mice to move the cursor.
+This is a result of the kernel driver's mapping for the classic controller. The DPAD is indeed mapped to the arrow keys, and the classic controller is picked up as keyboard. Use "xinput" to disable the classic controller as a keyboard if this poses a problem. "xinput" is also useful if your joysticks are being picked up as mice to move the cursor.
+
+    xinput --disable "Nintendo Wii Remote Classic Controller"
 
 Another fun fact about the classic controller kernel driver: since it doesn't map the left-stick to ABS_X/ABS_Y, the classic controller is not picked up as a gamepad by SDL, which makes it invisible to many modern games. Further, the  Y-axes were inverted. WiimoteGlue's virtual gamepads are picked up by SDL, so even without the gluing/dynamic remapping feature, WiimoteGlue already improves classic controller usability.
 
-(To be fair, I'll point out that the kernel driver for the classic controller predates the Linux gamepad API where the dpad event codes were formalized, and it is thanks to David Herrmann that both the kernel driver and the gamepad API exist, along with xwiimote.)
+(To be fair, I'll point out that the kernel driver for the classic controller predates the Linux gamepad API where the dpad event codes were formalized, and it is thanks to David Herrmann that both the kernel driver and the gamepad API exist, along with xwiimote. Thanks for all the work!)
 
 [For those curious, SDL requires a device to give out BTN_SOUTH and ABS_X/ABS_Y to be detected. The wiimote alone doesn't have ABS_X, the nunchuk doesn't have BTN_SOUTH, and the classic controller doesn't have ABS_X. The Wii U Pro does meet the SDL gamepad requirements under the kernel driver.]
 
