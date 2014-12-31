@@ -1,6 +1,8 @@
 #WiimoteGlue
 *Userspace driver for Wii remotes and their extensions to simulate standard gamepads*
 
+(Tested only on Arch Linux, 64-bit)
+
 ##Motivation
 
 The Linux kernel driver is pretty handy, but the extension controllers like the Nunchuk show up as separate devices. Extra features like the accelerometers or infared sensors also show up as separate devices. Since very little software supports taking input from multiple devices for a single player, using a wiimote for tilt controls or using the wiimote/nunchuk combo is rarely doable. WiimoteGlue acts to combine these into one synthetic device, and adds some extra features to further improve usability.
@@ -21,7 +23,7 @@ The Linux kernel driver is pretty handy, but the extension controllers like the 
 
 ##Documentation
 
-This README and the sample file "maps/readme_sample" are the only documentation at the moment.
+This README, the help text produced while running WiimoteGlue, and the sample file "maps/readme_sample" are the only documentation at the moment.
 
 ##Requirements
 
@@ -39,6 +41,8 @@ You also need to be able to connect your controllers in the first place. This ta
 * Set the player number LEDs on the controllers to match the virtual gamepad numbers.
 * Add multi-threading for processing the input events.
 * Improve the accelerometer/infared/balance board processing
+* Add a "waggle button" that is triggered when the wiimote or nunchuk are shaken.
+* Add a mode for the balance board that modulates an axis or axes by walking in place.
 * Add commandline arguments for more options
 * Add in rumble support.
 * Allow buttons to be mapped to axes, and vice versa.
@@ -68,6 +72,28 @@ You also need to be able to connect your controllers in the first place. This ta
 
 ##FAQ-ish
 
+###What's this about file permissions for the devices?
+WiimoteGlue will fail if you don't have the right permissions, and you likely won't have the right permissions unless you do some extra work. Though not recommended for regular use, running WiimoteGlue as a super-user can be a useful way to try it out before you have the permissions sorted out.
+
+You need write access to uinput to create the virtual gamepads.
+
+You need read access to the various event devices created by the kernel driver. Either run WiimoteGlue as root (not recommended) or set up some udev rules to automatically change the permissions. i'd recommed creating some sort of "input" group, changing the group ownership of the devices to be that group, and add your user account to that group (Reminder: you need to open a new shell to update your group permissions after adding yourself to the group!)
+
+    KERNEL=="event*", DRIVERS=="wiimote", GROUP="input", MODE="0660"
+
+seems to be a working udev rule for me.
+
+When rumble support is added, you'll need write access as well. (though only to the core wimote and Wii U pro devices; nunchuks and classic controllers don't have rumble)
+
+When LED changing is added, you'll also need write access to the LED brightness files. These LED devices are handled with by the kernel LED subsystem instead of the input subsystem.
+
+    SUBSYSTEM=="leds", ACTION=="add", DRIVERS=="wiimote", RUN+="/bin/sh -c 'chgrp input /sys%p/brightness'", RUN+="/bin/sh -c 'chmod g+w /sys%p/brightness'"
+
+seems to be a working for me, but there is probably a better way to write this rule.
+
+
+
+
 ###North, south, east, west? What are those? My "A" button isn't acting like a "A" button.
 
 See the Linux gamepad documentation. These are the "face buttons" generally pushed by one's right thumb.
@@ -79,9 +105,11 @@ Note that WiimoteGlue uses the event names TR2 and TL2 instead of ZR and ZL.
 Nintendo's "A" button isn't placed where the Xbox "A" button is. The default mapping for classic-style controllers matches the Linux gamepad documentation. Notably the usual Nintendo layout, the usual Xbox layout, and the Linux gamepad layout are all different. You'll need to make your own decisions on what mapping is best for you, (Many games today expect Xbox controllers; just because a game says "push A" doesn't mean it knows what button on your controller has an "A" on it.)
 
 For reference:
+
 * Nintendo ABXY is ESNW
 * Xbox ABXY is SEWN
 * Linux Gamepad ABXY is SENW
+
 (Hence why BTN_A,BTN_B etc. are deprecated event names... but many utilities like evtest still print out BTN_A instead of BTN_SOUTH)
 
 Playstation controllers don't even use labels like A,B, or Y but instead use shapes. One of those shapes is "X," and it doesn't line up with any of the three layouts above.
@@ -90,7 +118,15 @@ Playstation controllers don't even use labels like A,B, or Y but instead use sha
 
 That is outside the scope of this. Your bluetooth system handles this. This software assumes your bluetooth stack and kernel wiimote driver are already working and usable.
 
+See https://wiki.archlinux.org/index.php/XWiimote for more information on connecting wiimotes.
+
+Note that this uses xwiimote and the kernel driver, not one of the various wiimote libraries like cwiid that do handle connections, so the info on https://wiki.archlinux.org/index.php/Wiimote is not applicable. To use Wiimoteglue, use XWiimote; do not use cwiid and wminput.
+
+Aside from seeing the device entries get created by the kernel driver, a successful connection can be seen by the Wiimote LEDs switching to having just the left-most one lit. Prior to that, all 4 LEDs will be blinking while the wiimote is in sync mode.
+
 I have had some confusing experience of the wiimote connections sometimes consistently failing then magically working when I try later. I've also seen an unrelated issue when repeatedly and quickly disconnecting and reconnecting a controller. These are once again, outside the scope of WiimoteGlue.
+
+In the former case, the bluetooth connection fails. In the latter issue, the connection succeeds, but the no kernel devices are created. It seemed like the wiimote connected and was on, but all 4 of its LEDs were off since the kernel driver never set them.
 
 ###My classic controller d-pad is acting like arrow keys?
 
@@ -140,41 +176,26 @@ Unless you are using the oddly shaped oval classic controller with no hand grips
 
 Mapping one of the various input axis to a virtual analog trigger is also unsupported.
 
-###Why not use the kernel driver itself, or the exisitng X11 driver xf86-input-xwiimote?
+###Motion Plus?
 
-As noted above, the kernel driver makes separate devices for different features/extensions of the wiimote. The classic controller has legacy mapping issues leading to it being ignored by SDL.
+Unsupported, but it should be successfully ignored. Xwiimote does expose the motionplus data and even does a little calibration. If someone wants to write an effective way of using the gyroscope data on a virtual gamepad, please do so.
 
-The X11 driver is also handy, but it is designed for emulating a keyboard/mouse instead of a gamepad. Though it allows configuring the button mappings, it is not dynamic and cannot be changed while running.
 
-#Motion Plus?
+Theoretically the Motion Plus gyroscope data and the Wii remote accelerometerscould be used together to create a fairly stable reading of the Wii remote's orientation of pitch, yaw, and roll in the real world. (The infared sensor could also be used for a nice re-calibration whenever the IR sources come into view again.)
 
-Unsupported, but it should be successfully ignored.
+As is, the accelerometers provide a fairly noisy reading of pitch and roll, but yaw is entirely unknown. (The accelerometers can tell you the direction of gravity, when the Wii remote is held still.)
 
-#Wii U Gamepad?
+###Wii U Gamepad?
 
 Unsupported. It doesn't use bluetooth, but wifi to communicate. It is unlikely to ever be supported by this software.
 
 An an aside: Check out libDRC for some existing work on using the Gamepad under Linux. (It is rough at the the moment, and held back by the need to expose wifi TSF values to userland, and not all wifi hardware handles TSF sufficiently for the gamepad.)
 
-###What's this about file permissions for the devices?
+###Why not use the kernel driver itself, or the exisitng X11 driver xf86-input-xwiimote?
 
-You need write access to uinput to create the virtual gamepads.
+As noted above, the kernel driver makes separate devices for different features/extensions of the wiimote, making them all but unusable in most games. The classic controller has legacy mapping issues leading to it being ignored by SDL. With the kernel driver alone, only the Wii U Pro controller is useful.
 
-You need read access to the various event devices created by the kernel driver. Either run WiimoteGlue as root (not recommended) or set up some udev rules to automatically change the permissions. i'd recommed creating some sort of "input" group, changing the group ownership of the devices to be that group, and add your user account to that group (Reminder: you need to open a new shell to update your group permissions after adding yourself to the group!)
-
-    KERNEL=="event*", DRIVERS=="wiimote", GROUP="input", MODE="0660"
-
-seems to be a working udev rule for me.
-
-When rumble support is added, you'll need write access as well. (though only to the core wimote and Wii U pro devices; nunchuks and classic controllers don't have rumble)
-
-When LED changing is added, you'll also need write access to the LED brightness files. These LED devices are handled with by the kernel LED subsystem instead of the input subsystem.
-
-    SUBSYSTEM=="leds", ACTION=="add", DRIVERS=="wiimote", RUN+="/bin/sh -c 'chgrp input /sys%p/brightness'", RUN+="/bin/sh -c 'chmod g+w /sys%p/brightness'"
-
-seems to be a working for me, but there is probably a better way to write this rule.
-
-
+The X11 driver is also handy, but it is designed for emulating a keyboard/mouse instead of a gamepad. Though it allows configuring the button mappings, it is not dynamic and cannot be changed while running. These two aspects make it not the most useful for playing games.
 
 
 

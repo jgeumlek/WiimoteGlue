@@ -311,6 +311,5 @@ int init_mapping(struct wiimoteglue_state *state) {
   };
   memcpy(map->IR_map, classic_IR_map, sizeof(classic_IR_map));
 
-  state->devlist.map = &state->mode_no_ext;
 }
 
