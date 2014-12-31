@@ -1,5 +1,5 @@
 #WiimoteGlue
-*Userspace driver for Wii remotes and their extensions for simulating a standard gamepad*
+*Userspace driver for Wii remotes and their extensions to simulate standard gamepads*
 
 ##Motivation
 
