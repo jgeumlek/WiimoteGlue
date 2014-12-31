@@ -50,9 +50,6 @@ int wiimoteglue_epoll_watch_wiimote(int epfd, struct wii_device_list *device) {
 }
 
 void wiimoteglue_epoll_loop(int epfd, struct wiimoteglue_state *state) {
-  char buffer[10];
-  memset(buffer, 0, 10);
-  int bytes;
   int n;
   int i;
 

@@ -56,6 +56,8 @@ You also need to be able to connect your controllers in the first place. This ta
 ##Known Issues
 
 * Though each controller can be in a different mode depending on its extension, there is just one mapping for each mode. (e.g. Player 1 with just a wiimote and player 2 with wiimote/nunchuk will have different control mappings. If Player 1 inserts a nunchuk, they will share the wiimote/nunchuk control mapping.)
+* Sometimes extensions aren't detected, especially when already inserted when a wiimote connects. Unplugging them and re-inserting generally fixes this.
+* Though the Wii U Pro supports changing the button mappings and axis mappings, it does not allow inverting the axes.
 * Number of virtual gamepads is hard-coded to 4.
 * Any wiimotes connected before starting WiimoteGlue will be ignored.
 * Currently single-threaded to handle all input events across all controllers. May introduce latency? Most shared data is written only by the command interface; it is only read elsewhere. The real trouble points are adding/deleting entries of the devicelist and keeping track of STDIN commands versus commands from a file.
@@ -132,9 +134,9 @@ In the former case, the bluetooth connection fails. In the latter issue, the con
 
 This is a result of the kernel driver's mapping for the classic controller. The DPAD is indeed mapped to the arrow keys, which means the classic controller is picked up as keyboard. Uses "xinput" to disable the classic controller as a keyboard if this poses a problem. "xinput" is also useful if your gamepads are being picked up as mice to move the cursor.
 
-Another fun fact about the classic controller kernel driver: since it doesn't map the left-stick to ABS_X/ABS_Y, the classic controller is not picked up as a gamepad by SDL, which makes it invisible to many modern games. WiimoteGlue's virtual gamepads are picked up by SDL, so even without the gluing/dynamic remapping feature, WiimoteGlue already improves classic controller usability.
+Another fun fact about the classic controller kernel driver: since it doesn't map the left-stick to ABS_X/ABS_Y, the classic controller is not picked up as a gamepad by SDL, which makes it invisible to many modern games. Further, the outputted Y-axes were inverted. WiimoteGlue's virtual gamepads are picked up by SDL, so even without the gluing/dynamic remapping feature, WiimoteGlue already improves classic controller usability.
 
-(To be fair, I'll point out that the kernel driver for the classic controller predates the Linux gamepad API where the dpad event codes were formalized, and it is thanks to David Herrmann that both the kernel driver and the gamepad API exist.)
+(To be fair, I'll point out that the kernel driver for the classic controller predates the Linux gamepad API where the dpad event codes were formalized, and it is thanks to David Herrmann that both the kernel driver and the gamepad API exist, along with xwiimote.)
 
 [For those curious, SDL requires a device to give out BTN_SOUTH and ABS_X/ABS_Y to be a gamepad. The wiimote alone doesn't have ABS_X, the nunchuk doesn't have BTN_SOUTH, and the classic controller doesn't have ABS_X. The Wii U Pro does meet the SDL gamepad requirements under the kernel driver.]
 

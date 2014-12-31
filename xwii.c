@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <errno.h>
 #include <linux/input.h>
-#include "wiimoteglue.h"
 #include <string.h>
+#include <unistd.h>
+
+#include "wiimoteglue.h"
 
 /* This file uses the xwiimote library
  * for interacting with wiimotes.
@@ -34,6 +36,8 @@ int close_remote(struct wii_device_list *dev) {
     }
 
     free(dev);
+
+    return 0;
 }
 
 void handle_key(int uinput_fd, int button_map[], struct xwii_event_key *ev);
@@ -75,7 +79,7 @@ int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist) {
 
 int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device_list *dev) {
   struct xwii_event ev;
-  if (dev->slot == NULL) return;
+  if (dev->slot == NULL) return -1;
   int ret = xwii_iface_dispatch(dev->device,&ev,sizeof(ev));
   if (ret < 0 && ret != -EAGAIN) {
     printf("Error reading controller. ");
@@ -146,6 +150,8 @@ int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_dev
 
     }
   }
+
+  return 0;
 }
 
 void handle_key(int uinput_fd, int button_map[], struct xwii_event_key *ev) {
@@ -226,18 +232,25 @@ void handle_pro(int uinput_fd, struct event_map *map, struct xwii_event_abs ev[]
   struct input_event out;
   memset(&out,0,sizeof(out));
   out.type = EV_ABS;
-   out.code = map->stick_map[WG_LEFT_X][AXIS_CODE];
-  out.value = ev[0].x * map->stick_map[WG_LEFT_X][AXIS_SCALE];
+  out.code = map->stick_map[WG_LEFT_X][AXIS_CODE];
+  out.value = ev[0].x * 32;
   write(uinput_fd, &out, sizeof(out));
   out.code = map->stick_map[WG_LEFT_Y][AXIS_CODE];
-  out.value = ev[0].y * map->stick_map[WG_LEFT_Y][AXIS_SCALE];
+  out.value = ev[0].y * 32;
   write(uinput_fd, &out, sizeof(out));
   out.code = map->stick_map[WG_RIGHT_X][AXIS_CODE];
-  out.value = ev[1].x * map->stick_map[WG_RIGHT_X][AXIS_SCALE];
+  out.value = ev[1].x * 32;
   write(uinput_fd, &out, sizeof(out));
   out.code = map->stick_map[WG_RIGHT_Y][AXIS_CODE];
-  out.value = ev[1].y * map->stick_map[WG_RIGHT_Y][AXIS_SCALE];
+  out.value = ev[1].y * 32;
   write(uinput_fd, &out, sizeof(out));
+
+  /*Wii U Pro has different axis limits, hardcoded above to
+   * scale from ~1024 to 32,768, the reported scale of
+   * the virtual gamepads.
+   * This means the Wii U Pro does not support inverting
+   * the axes!
+   */
 
   out.type  = EV_SYN;
   out.code = SYN_REPORT;

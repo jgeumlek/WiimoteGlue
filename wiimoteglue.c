@@ -7,8 +7,6 @@
 #include <linux/input.h>
 #include <linux/uinput.h>
 #include <libudev.h>
-
-#include <string.h>
 #include <signal.h>
 
 #include <xwiimote.h>
@@ -32,22 +30,16 @@ int main(int argc, char *argv[]) {
   int monitor_fd;
   int epfd;
   int ret;
-  //Ask how many fake controllers to make... (ASSUME 2 FOR NOW)
-  printf("Creating 2 uinput devices...");
-  state.slots[0].slot_number = 1;
-  state.slots[1].slot_number = 2;
-  state.slots[2].slot_number = 3;
-  state.slots[3].slot_number = 4;
-  state.slots[0].has_wiimote = 0;
-  state.slots[1].has_wiimote = 0;
-  state.slots[2].has_wiimote = 0;
-  state.slots[3].has_wiimote = 0;
-  state.slots[0].has_board = 0;
-  state.slots[1].has_board = 0;
-  state.slots[2].has_board = 0;
-  state.slots[3].has_board = 0;
+  //Ask how many fake controllers to make... (ASSUME 4 FOR NOW)
+  printf("Creating %d uinput devices...",NUM_SLOTS);
+  int i;
+  for (i = 0; i < NUM_SLOTS; i++) {
+    state.slots[i].slot_number = i+1;
+    state.slots[i].has_wiimote = 0;
+    state.slots[i].has_board = 0;
+  }
 
-  ret = wiimoteglue_uinput_init(4, state.slots);
+  ret = wiimoteglue_uinput_init(NUM_SLOTS, state.slots);
   if (ret) {
     printf("\nError in creating uinput devices, aborting.\nCheck the permissions.\n");
     wiimoteglue_uinput_close(2,state.slots);
@@ -97,7 +89,7 @@ int main(int argc, char *argv[]) {
 
 
   printf("Shutting down...\n");
-  wiimoteglue_uinput_close(2, state.slots);
+  wiimoteglue_uinput_close(NUM_SLOTS, state.slots);
 
   struct wii_device_list *list_node = state.devlist.next;
   for (; list_node != NULL; ) {
@@ -109,6 +101,8 @@ int main(int argc, char *argv[]) {
 
   udev_monitor_unref(state.monitor);
   udev_unref(udev);
+
+  return 0;
 }
 
 int init_mapping(struct wiimoteglue_state *state) {
@@ -310,6 +304,8 @@ int init_mapping(struct wiimoteglue_state *state) {
     {ABS_RY, ABS_LIMIT/300},/*ir_y*/
   };
   memcpy(map->IR_map, classic_IR_map, sizeof(classic_IR_map));
+
+  return 0;
 
 }
 

@@ -4,6 +4,7 @@
 
 #include <linux/input.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 /* Handles user input from STDIN and command files. */
 
@@ -61,7 +62,6 @@ int get_output_axis(char *key_name);
 int wiimoteglue_handle_input(struct wiimoteglue_state *state, int file) {
   char *line = getwholeline(file);
   if (line != NULL) {
-    char *token;
     char *lineptr = line;
     char *args[NUM_WORDS];
     char **argptr;
@@ -279,7 +279,8 @@ void toggle_setting(struct wiimoteglue_state *state, int active, char *mode, cha
 
     if (!active) ir_count = 0;
 
-    mapping->IR_count = active;
+    /*currently multiple IR sources, or a single one are treated identically*/
+    mapping->IR_count = ir_count;
     wiimoteglue_update_wiimote_ifaces(&state->devlist);
     return;
   }
@@ -394,7 +395,7 @@ int load_command_file(struct wiimoteglue_state *state, char *filename) {
     if (state->load_lines > MAX_LOAD_LINES) {
       /*exceeded number of lines read, start backing out.*/
       close(fd);
-      return;
+      return -2;
     }
     ret = wiimoteglue_handle_input(state, fd);
   }
