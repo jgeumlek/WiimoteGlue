@@ -59,10 +59,14 @@ void wiimoteglue_epoll_loop(int epfd, struct wiimoteglue_state *state) {
       if (events[i].data.ptr == state->monitor) {
 	//HANDLE UDEV STUFF
 	wiimoteglue_udev_handle_event(state);
+	printf("\n>>");
+	fflush(stdout);
       } else if (events[i].data.ptr == NULL) {
 	//HANDLE USER INPUT
 	state->load_lines = 0;
 	wiimoteglue_handle_input(state,0);
+	printf("\n>>");
+	fflush(stdout);
       } else {
 	//HANDLE WII STUFF
 	wiimoteglue_handle_wii_event(state,events[i].data.ptr);

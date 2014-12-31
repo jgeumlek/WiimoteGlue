@@ -1,0 +1,27 @@
+#a simple mapping for holding the wiimote horizontally
+#Great for classic games using a dpad and two action buttons.
+
+
+map wiimote up left
+map wiimote left down
+map wiimote right up
+map wiimote down right
+map wiimote a north
+map wiimote b west
+map wiimote 1 south
+map wiimote 2 east
+map wiimote plus start
+map wiimote home mode
+map wiimote minus select
+
+
+#Tilt controls are mapped to a virtual left-stick,
+#but the accelerometers are off by default.
+
+disable wiimote accel
+map wiimote accelx left_y invert
+map wiimote accely left_x invert
+
+#The IR sensor is just going to be pointing at a hand.
+#No need to enable it.
+disable wiimote IR

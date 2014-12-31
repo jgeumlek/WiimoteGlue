@@ -1,0 +1,30 @@
+#a simple mapping for holding the wiimote vertically
+#With only one hand on the wiimote, the uses here are 
+#a bit limited.
+
+
+map wiimote up up
+map wiimote left left
+map wiimote right right
+map wiimote down down
+map wiimote a south
+map wiimote b east
+map wiimote 1 north
+map wiimote 2 west
+map wiimote plus start
+map wiimote home mode
+map wiimote minus select
+
+
+#Tilt controls are mapped to a virtual left-stick,
+
+enable wiimote accel
+map wiimote accelx left_x invert
+map wiimote accely left_y invert
+
+#The IR sensor is mapped to a virtual right-stick.
+#You'll probably want either tilt or IR, not both.
+
+disable wiimote ir
+map wiimote ir_x right_x
+map wiimote ir_y right_y

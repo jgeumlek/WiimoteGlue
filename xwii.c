@@ -23,9 +23,9 @@ int close_remote(struct wii_device_list *dev) {
     if (dev->slot != NULL) {
       printf("(It was assigned slot #%d)\n",dev->slot->slot_number);
       if (dev->type == BALANCE) {
-	dev->slot->has_board = 0;
+	dev->slot->has_board--;
       } else {
-	dev->slot->has_wiimote = 0;
+	dev->slot->has_wiimote--;
       }
     }
     if (dev->prev) {
@@ -86,7 +86,14 @@ int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist) {
 
 int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device_list *dev) {
   struct xwii_event ev;
-  if (dev->slot == NULL) return -1;
+  if (dev == NULL) {
+    return -1;
+  }
+  if (dev->slot == NULL) {
+    /*Just ignore this event, but be sure to read it to clear it*/
+    xwii_iface_dispatch(dev->device,&ev,sizeof(ev));
+    return -1;
+  }
   int ret = xwii_iface_dispatch(dev->device,&ev,sizeof(ev));
   if (ret < 0 && ret != -EAGAIN) {
     printf("Error reading controller. ");

@@ -43,15 +43,15 @@ int add_wii_device(struct wiimoteglue_state *state, struct xwii_iface *wiidev, c
   }
 
   if (! (list_node->ifaces & XWII_IFACE_BALANCE_BOARD)) {
-    for (i = 0; i < NUM_SLOTS; i++) {
+    for (i = 1; i <= NUM_SLOTS; i++) {
       if (state->slots[i].has_wiimote == 0) {
-	state->slots[i].has_wiimote = 1;
+	state->slots[i].has_wiimote++;
 	list_node->slot = &state->slots[i];
 	if (list_node->ifaces & XWII_IFACE_PRO_CONTROLLER) {
-	  printf("Wii U Pro controller added to slot %d\n", i+1);
+	  printf("Wii U Pro controller added to slot %d\n", i);
 	  list_node->type = PRO;
 	} else {
-	  printf("Wiimote added to slot %d\n", i+1);
+	  printf("Wiimote added to slot %d\n", i);
 	  list_node->type = REMOTE;
 	}
 
@@ -66,19 +66,18 @@ int add_wii_device(struct wiimoteglue_state *state, struct xwii_iface *wiidev, c
 
     if (list_node->slot == NULL) {
       printf("Wiimote or Wii U Pro detected, but all slots are filled.");
-      xwii_iface_unref(wiidev);
-      free(list_node);
-      return -1;
+      printf("(WiimoteGlue still has it open and listening...)\n");
+      list_node->slot = NULL;
     }
 
 
   } else {
     list_node->type = BALANCE;
-    for (i = 0; i < NUM_SLOTS; i++) {
+    for (i = 1; i <= NUM_SLOTS; i++) {
       if (state->slots[i].has_board == 0) {
-	state->slots[i].has_board = 1;
+	state->slots[i].has_board++;
 	list_node->slot = &state->slots[i];
-	printf("Balance board added to slot %d\n", i+1);
+	printf("Balance board added to slot %d\n", i);
 
 	list_node->fd = xwii_iface_get_fd(wiidev);
 
@@ -90,9 +89,8 @@ int add_wii_device(struct wiimoteglue_state *state, struct xwii_iface *wiidev, c
 
     if (list_node->slot == NULL) {
       printf("Balance board detected, but all slots are filled.");
-      xwii_iface_unref(wiidev);
-      free(list_node);
-      return -1;
+      printf("(WiimoteGlue still has it open and listening...)\n");
+      
     }
 
 

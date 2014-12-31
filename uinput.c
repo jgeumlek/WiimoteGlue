@@ -16,17 +16,33 @@
 int open_uinput_fd();
 
 
-int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], int keyboardmouse_fd) {
+int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[]) {
   int uinput_fd = 0;
   int i;
-  for (i = 0; i < num_slots; i++) {
-    uinput_fd = open_uinput_fd();
+  int keyboardmouse_fd = open_uinput_keyboardmouse_fd();
+  if (keyboardmouse_fd < 0) {
+    return -1;
+  }
+
+  slots[0].uinput_fd = keyboardmouse_fd;
+  slots[0].keyboardmouse_fd = slots[0].uinput_fd;
+  slots[0].gamepad_fd = slots[0].uinput_fd;
+  slots[0].has_wiimote = 0;
+  slots[0].has_board = 0;
+  slots[0].slot_number = 0;
+
+
+  for (i = 1; i <= num_slots; i++) {
+    uinput_fd = open_uinput_gamepad_fd();
     if (uinput_fd < 0) {
       return -1;
     }
     slots[i].uinput_fd = uinput_fd;
     slots[i].keyboardmouse_fd = keyboardmouse_fd;
     slots[i].gamepad_fd = uinput_fd;
+    slots[i].slot_number = i;
+    slots[i].has_wiimote = 0;
+    slots[i].has_board = 0;
   }
 
 
@@ -36,7 +52,8 @@ int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], in
 
 int wiimoteglue_uinput_close(int num_slots, struct virtual_controller slots[]) {
   int i;
-  for (i = 0; i < num_slots; i++) {
+  /*Remember, there are num_slots+1 devices, because of the fake keyboard/mouse */
+  for (i = 0; i <= num_slots; i++) {
     if (ioctl(slots[i].uinput_fd, UI_DEV_DESTROY) < 0) {
       //printf("Error destroying uinput device.\n");
     }
@@ -47,7 +64,7 @@ int wiimoteglue_uinput_close(int num_slots, struct virtual_controller slots[]) {
 }
 
 
-int open_uinput_fd() {
+int open_uinput_gamepad_fd() {
   /* as far as I know, you can't change the reported event types
    * after creating the virtual device.
    * So we just create a gamepad with all of them, even if unmapped.
@@ -90,7 +107,7 @@ int open_uinput_fd() {
   return fd;
 }
 
-int wiimoteglue_open_uinput_keyboardmouse_fd() {
+int open_uinput_keyboardmouse_fd() {
 
   static int abs[] = { ABS_X, ABS_Y, ABS_RX, ABS_RY};
   static int key[] = { BTN_LEFT, BTN_MIDDLE, BTN_RIGHT,BTN_TOUCH};
