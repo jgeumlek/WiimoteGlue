@@ -320,6 +320,8 @@ void handle_balance(int uinput_fd, struct event_map *map, struct xwii_event_abs 
   int front = ev[0].x + ev[2].x;
   int back = total - front;
 
+  /*Beware: lots of constants from experimentation below!*/
+
   float x = (right - left)/((total + 1)*0.7f);
   float y = (back - front)/((total + 1)*0.7f);
 
