@@ -98,7 +98,7 @@ This is a result of the kernel driver's mapping for the classic controller. The 
 
 Another fun fact about the classic controller kernel driver: since it doesn't map the left-stick to ABS_X/ABS_Y, the classic controller is not picked up as a gamepad by SDL, which makes it invisible to many modern games. WiimoteGlue's virtual gamepads are picked up by SDL, so even without the gluing/dynamic remapping feature, WiimoteGlue already improves classic controller usability.
 
-(To be fair, I'll point out that the kernel driver for the classic controller predates the Linux gamepad API where the dpad event codes were formalized, and it is thanks to David Hermann that both the kernel driver and the gamepad API exist.)
+(To be fair, I'll point out that the kernel driver for the classic controller predates the Linux gamepad API where the dpad event codes were formalized, and it is thanks to David Herrmann that both the kernel driver and the gamepad API exist.)
 
 [For those curious, SDL requires a device to give out BTN_SOUTH and ABS_X/ABS_Y to be a gamepad. The wiimote alone doesn't have ABS_X, the nunchuk doesn't have BTN_SOUTH, and the classic controller doesn't have ABS_X. The Wii U Pro does meet the SDL gamepad requirements under the kernel driver.]
 
