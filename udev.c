@@ -9,7 +9,7 @@
  * Note that xwii.c handles removing wiimotes.
  */
 
-int add_wii_device(struct wiimoteglue_state *state, struct xwii_iface *wiidev) {
+int add_wii_device(struct wiimoteglue_state *state, struct xwii_iface *wiidev, const char* uniq) {
   int i;
   struct wii_device_list *list_node = calloc(1,sizeof(struct wii_device_list));
 
@@ -98,6 +98,17 @@ int add_wii_device(struct wiimoteglue_state *state, struct xwii_iface *wiidev) {
 
   }
 
+
+  list_node->bluetooth_addr = malloc(18*sizeof(char));
+  strncpy(list_node->bluetooth_addr, uniq, 17);
+  list_node->bluetooth_addr[17] = '\0';
+
+  list_node->id = malloc(32*sizeof(char));
+  snprintf(list_node->id,32,"dev%d",++(state->dev_count));
+
+  printf("\tid: %s\n\taddress %s\n",list_node->id, list_node->bluetooth_addr);
+
+
   list_node->next = state->devlist.next;
   list_node->prev = &state->devlist;
   state->devlist.next = list_node;
@@ -134,10 +145,13 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
     const char* syspath;
     const char* driver;
     const char* subsystem;
+    const char* uniq; /*should be the bluetooth MAC*/
     action = udev_device_get_action(dev);
     syspath = udev_device_get_syspath(dev);
     driver = udev_device_get_driver(dev);
     subsystem = udev_device_get_subsystem(dev);
+    uniq = udev_device_get_property_value(dev, "HID_UNIQ");
+
 
     if (strcmp(action,"change") == 0) {
       //It seems "change" happens once the wiimote is ready,
@@ -151,7 +165,8 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
 
 	  xwii_iface_open(wiidev,  XWII_IFACE_WRITABLE | (XWII_IFACE_ALL ^ XWII_IFACE_ACCEL ^ XWII_IFACE_IR));
 
-	  add_wii_device(state,wiidev);
+
+	  add_wii_device(state,wiidev,uniq);
 	}
       }
     }

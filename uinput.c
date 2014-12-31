@@ -16,7 +16,7 @@
 int open_uinput_fd();
 
 
-int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[]) {
+int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], int keyboardmouse_fd) {
   int uinput_fd = 0;
   int i;
   for (i = 0; i < num_slots; i++) {
@@ -25,7 +25,10 @@ int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[]) {
       return -1;
     }
     slots[i].uinput_fd = uinput_fd;
+    slots[i].keyboardmouse_fd = keyboardmouse_fd;
+    slots[i].gamepad_fd = uinput_fd;
   }
+
 
   return 0;
 
@@ -78,6 +81,59 @@ int open_uinput_fd() {
 
   ioctl(fd, UI_SET_EVBIT, EV_KEY);
   for (i = 0; i < 15; i++) {
+    ioctl(fd, UI_SET_KEYBIT, key[i]);
+  }
+
+  write(fd, &uidev, sizeof(uidev));
+  if (ioctl(fd, UI_DEV_CREATE) < 0)
+    perror("uinput device creation");
+  return fd;
+}
+
+int wiimoteglue_open_uinput_keyboardmouse_fd() {
+
+  static int abs[] = { ABS_X, ABS_Y, ABS_RX, ABS_RY};
+  static int key[] = { BTN_LEFT, BTN_MIDDLE, BTN_RIGHT,BTN_TOUCH};
+  struct uinput_user_dev uidev;
+  int fd;
+  int i;
+  //TODO: handle other locations of uinput.
+  //TODO: Read from uinput for rumble events?
+  fd = open(UINPUT_FILE, O_WRONLY | O_NONBLOCK);
+  if (fd < 0) {
+    perror("open uinput");
+    return -1;
+  }
+  memset(&uidev, 0, sizeof(uidev));
+  snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "WiimoteGlue Virtual Keyboard and Mouse");
+  uidev.id.bustype = BUS_USB;
+  uidev.id.vendor = 0x1;
+  uidev.id.product = 0x1;
+  uidev.id.version = 1;
+
+  ioctl(fd, UI_SET_EVBIT, EV_ABS);
+  for (i = 0; i < 4; i++) {
+    ioctl(fd, UI_SET_ABSBIT, abs[i]);
+    uidev.absmin[abs[i]] = -32768;
+    uidev.absmax[abs[i]] = 32768;
+    uidev.absflat[abs[i]] = 4096;
+  }
+
+
+
+  /*Just set all possible keys that come before BTN_MISC
+   * This should cover all reasonable keyboard keys.*/
+  ioctl(fd, UI_SET_EVBIT, EV_KEY);
+  for (i = 2; i < BTN_MISC; i++) {
+    ioctl(fd, UI_SET_KEYBIT, i);
+  }
+  for (i = KEY_OK; i < KEY_KBDINPUTASSIST_CANCEL; i++) {
+    ioctl(fd, UI_SET_KEYBIT, i);
+  }
+
+
+  /*Set standard mouse buttons*/
+  for (i = 0; i < 4; i++) {
     ioctl(fd, UI_SET_KEYBIT, key[i]);
   }
 

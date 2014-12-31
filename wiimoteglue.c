@@ -33,13 +33,15 @@ int main(int argc, char *argv[]) {
   //Ask how many fake controllers to make... (ASSUME 4 FOR NOW)
   printf("Creating %d uinput devices...",NUM_SLOTS);
   int i;
+  state.virtual_keyboardmouse_fd = wiimoteglue_open_uinput_keyboardmouse_fd();
   for (i = 0; i < NUM_SLOTS; i++) {
     state.slots[i].slot_number = i+1;
     state.slots[i].has_wiimote = 0;
     state.slots[i].has_board = 0;
   }
 
-  ret = wiimoteglue_uinput_init(NUM_SLOTS, state.slots);
+  ret = wiimoteglue_uinput_init(NUM_SLOTS, state.slots, state.virtual_keyboardmouse_fd);
+
   if (ret) {
     printf("\nError in creating uinput devices, aborting.\nCheck the permissions.\n");
     wiimoteglue_uinput_close(2,state.slots);
@@ -79,6 +81,7 @@ int main(int argc, char *argv[]) {
 
   //Process user input.
   state.keep_looping = 1;
+  state.dev_count = 0;
 
   signal(SIGINT, signal_handler);
   signal(SIGTERM, signal_handler);
@@ -90,11 +93,18 @@ int main(int argc, char *argv[]) {
 
   printf("Shutting down...\n");
   wiimoteglue_uinput_close(NUM_SLOTS, state.slots);
+  close(state.virtual_keyboardmouse_fd);
 
   struct wii_device_list *list_node = state.devlist.next;
   for (; list_node != NULL; ) {
     xwii_iface_unref(list_node->device);
     struct wii_device_list *next = list_node->next;
+    if (list_node->id != NULL) {
+      free(list_node->id);
+    }
+    if (list_node->bluetooth_addr != NULL) {
+      free(list_node->bluetooth_addr);
+    }
     free(list_node);
     list_node = next;
   }

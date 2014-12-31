@@ -35,6 +35,8 @@ struct wii_input_sources {
 
 struct virtual_controller {
   int uinput_fd;
+  int keyboardmouse_fd;
+  int gamepad_fd;
   int slot_number;
   int has_wiimote;
   int has_board;
@@ -70,6 +72,9 @@ struct wii_device_list {
   int ifaces;
   struct event_map *map;
 
+  char* id;
+  char* bluetooth_addr;
+
   enum DEVICE_TYPE { REMOTE, BALANCE, PRO} type;
 
   int fd;
@@ -78,10 +83,12 @@ struct wii_device_list {
 struct wiimoteglue_state {
   struct udev_monitor *monitor;
   struct virtual_controller slots[NUM_SLOTS]; /*TODO: FIX THIS HARDCODED VALUE.*/
+  int virtual_keyboardmouse_fd;
   struct wii_device_list devlist;
   int epfd;
   int keep_looping;
   int load_lines; /*how many lines of loaded files have we processed? */
+  int dev_count; /*simple counter for making identifiers*/
   struct event_map mode_no_ext;
   struct event_map mode_nunchuk;
   struct event_map mode_classic;
@@ -126,7 +133,8 @@ enum bal_axis {
 };
 
 int wiimoteglue_uinput_close(int num_slots, struct virtual_controller slots[]);
-int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[]);
+int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], int keyboardmouse_fd);
+int wiimoteglue_open_uinput_keyboardmouse_fd();
 
 int wiimoteglue_udev_monitor_init(struct udev **udev, struct udev_monitor **monitor, int *mon_fd);
 int wiimoteglue_udev_handle_event(struct wiimoteglue_state* state);

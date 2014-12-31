@@ -16,7 +16,7 @@
  */
 
 int close_remote(struct wii_device_list *dev) {
-    printf("Controller has been removed.\n");
+    printf("Controller %s (%s) has been removed.\n",dev->id,dev->bluetooth_addr);
 
     close(dev->fd);
     xwii_iface_unref(dev->device);
@@ -33,6 +33,13 @@ int close_remote(struct wii_device_list *dev) {
     }
     if (dev->next) {
       dev->next->prev = dev->prev;
+    }
+
+    if (dev->id != NULL) {
+      free(dev->id);
+    }
+    if (dev->bluetooth_addr != NULL) {
+      free(dev->bluetooth_addr);
     }
 
     free(dev);
