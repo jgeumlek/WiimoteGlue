@@ -3,6 +3,14 @@
 
 (Tested only on Arch Linux, 64-bit)
 
+    make
+
+to build it, and
+
+    ./wiimoteglue
+
+to run it.
+
 ##Motivation
 
 The Linux kernel driver for wiimotes is pretty handy, but the extension controllers like the Nunchuk show up as separate devices. Extra features like the accelerometers or infared sensors also show up as separate devices. Since very little software supports taking input from multiple devices for a single player, using a wiimote for tilt controls or using the wiimote/nunchuk combo is rarely doable. WiimoteGlue acts to combine these into a synthetic gamepad, and adds some extra features to further improve usability.
