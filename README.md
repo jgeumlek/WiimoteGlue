@@ -11,7 +11,11 @@ to build it, and
 
 to run it.
 
-It requires udev, uinput, and xwiimote.
+    ./wiimoteglue --help
+
+to see the (very few) command line arguments.
+
+It requires udev, uinput, and xwiimote. The Makefile is very naive; it is just a single gcc invocation. Pretty much build it however you want, just be sure to link the necessary libraries.
 
 https://github.com/dvdhrm/xwiimote (also available in the AUR https://aur.archlinux.org/packages/xwiimote/ )
 
@@ -73,7 +77,7 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Improve the accelerometer/infared/balance board processing
 * Add a "waggle button" that is triggered when the wiimote or nunchuk are shaken.
 * Add a mode for the balance board that modulates an axis (or axes?) by walking in place.
-* Add commandline arguments for more options
+* Add more commandline arguments for more options
 * Add in rumble support.
 * Allow buttons to be mapped to axes, and vice versa.
 * Improve the control mapping files to be less cumbersome.

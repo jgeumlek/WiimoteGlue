@@ -53,7 +53,6 @@ char * getwholeline(int file) {
 void process_command(struct wiimoteglue_state *state, char *args[]);
 void update_mapping(struct wiimoteglue_state *state, char *mode, char *in, char *out, char *opt);
 void toggle_setting(struct wiimoteglue_state *state, int active, char *mode, char *setting, char *opt);
-int load_command_file(struct wiimoteglue_state *state, char *filename);
 int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting);
 int list_devices(struct wii_device_list *devlist, char *option);
 struct wii_device_list* lookup_device(struct wii_device_list *devlist, char *name);
@@ -115,6 +114,7 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
     printf("\tenable/disable - control extra controller features\n");
     printf("\tlist - list all open devices\n");
     printf("\tassign - assign a device to a virtual slot\n");
+    printf("\tslot - set a slot to be a gamepad or a keyboard/mouse\n");
     printf("\tload - opens a file and runs the commands inside\n");
     printf("\tquit - close down WiimoteGlue\n");
     printf("\tmodes - show recognized keywords for controller modes\n");
@@ -193,7 +193,7 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
     return;
   }
   if (strcmp(args[0],"load") == 0) {
-    load_command_file(state,args[1]);
+    wiimoteglue_load_command_file(state,args[1]);
     return;
   }
   if (strcmp(args[0],"slot") == 0) {
@@ -317,7 +317,7 @@ void toggle_setting(struct wiimoteglue_state *state, int active, char *mode, cha
 
 
 
-int load_command_file(struct wiimoteglue_state *state, char *filename) {
+int wiimoteglue_load_command_file(struct wiimoteglue_state *state, char *filename) {
   if (filename == NULL) {
     printf("usage: load <filename>\n");
     return 0;

@@ -3,7 +3,7 @@
 
 #first, lets change player 1 to simulate a keyboard
 #One can also do "assign <devname> keyboard mouse"
-change 1 keyboardmouse
+slot 1 keyboardmouse
 #Keyboard and mouse events only work if one
 #these two cases are true:
 #  -The device's slot is set to keyboardmouse mode
@@ -36,7 +36,7 @@ map nunchuk a left_click
 map nunchuk b right_click
 
 map nunchuk c key_playpause
-map nunchuk z key_mute;
+map nunchuk z key_mute
 map nunchuk left key_previoussong
 map nunchuk right key_nextsong
 map nunchuk home key_stop

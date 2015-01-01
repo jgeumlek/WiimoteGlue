@@ -13,23 +13,46 @@
 
 #include "wiimoteglue.h"
 
+
+
 struct wiimoteglue_state* gstate;
 void signal_handler(int signum) {
   printf("Signal received, attempting to clean up.\n");
   gstate->keep_looping = 0;
 }
 
+struct commandline_options {
+  char* file_to_load;
+  int number_of_slots;
+  int create_keyboardmouse;
+  int check_for_existing_wiimotes;
+  int monitor_for_new_wiimotes;
+  char* virt_gamepad_name;
+  char* virt_keyboardmouse_name;
+} options;
+
 
 int init_mapping(struct wiimoteglue_state *state);
+int handle_arguments(struct commandline_options *options, int argc, char *argv[]);
 
 int main(int argc, char *argv[]) {
   struct udev *udev;
   struct wiimoteglue_state state;
   gstate = &state;
   memset(&state, 0, sizeof(state));
+  memset(&options, 0, sizeof(options));
   int monitor_fd;
   int epfd;
   int ret;
+
+  ret = handle_arguments(&options, argc, argv);
+  if (ret == 1) {
+    return 0; /*arguments just said to print out help or version info.*/
+  }
+  if (ret < 0) {
+    return ret;
+  }
+
   //Ask how many fake controllers to make... (ASSUME 4 FOR NOW)
   printf("Creating uinput devices (%d gamepads, and a keyboard/mouse combo)...",NUM_SLOTS);
   int i;
@@ -84,6 +107,9 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, signal_handler);
   signal(SIGTERM, signal_handler);
   signal(SIGHUP, signal_handler);
+  if (options.file_to_load != NULL) {
+    wiimoteglue_load_command_file(&state,options.file_to_load);
+  }
   printf("WiimoteGlue is running. Enter \"help\" for available commands.\n");
   wiimoteglue_epoll_loop(epfd, &state);
 
@@ -111,6 +137,44 @@ int main(int argc, char *argv[]) {
   udev_unref(udev);
 
   return 0;
+}
+
+int handle_arguments(struct commandline_options *options, int argc, char *argv[]) {
+ char* invoke = argv[0];
+ argc--;
+ argv++;
+ /*skip the program name*/
+ while (argc > 0) {
+   if (strcmp("--help",argv[0]) == 0 || strcmp("-h",argv[0]) == 0) {
+     printf("WiimoteGlue Version %s\n",WIIMOTEGLUE_VERSION);
+     printf("\t%s [arguments]\n\n",invoke);
+     printf("Recognized Arguments:\n");
+     printf("  -h, --help\t\t\tShow help text\n");
+     printf("  -v, --version\t\t\tShow version string\n");
+     printf("  -l, --load-file <file>\tLoad the file at start-up.\n");
+     return 1;
+   }
+   if (strcmp("--version",argv[0]) == 0 || strcmp("-v",argv[0]) == 0) {
+     printf("WiimoteGlue Version %s\n",WIIMOTEGLUE_VERSION);
+     return 1;
+   }
+   if (strcmp("--load-file",argv[0]) == 0 || strcmp("-l",argv[0]) == 0) {
+     if (argc < 2) {
+       printf("Argument \"%s\" requires a filename to load.\n",argv[0]);
+       return -1;
+     }
+     options->file_to_load = argv[1];
+     argc--;
+     argv++;
+   } else {
+     printf("Argument \"%s\" not recognized.\n",argv[0]);
+     return -1;
+   }
+
+   argc--;
+   argv++;
+ }
+ return 0;
 }
 
 int init_mapping(struct wiimoteglue_state *state) {

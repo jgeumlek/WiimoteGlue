@@ -4,6 +4,8 @@
 #include <xwiimote.h>
 #include <libudev.h>
 
+#define WIIMOTEGLUE_VERSION "1.0"
+
 #define ABS_LIMIT 32767
 #define TILT_LIMIT 80
 #define TILT_SCALE (ABS_LIMIT/TILT_LIMIT)
@@ -146,6 +148,7 @@ int wiimoteglue_epoll_watch_wiimote(int epfd, struct wii_device_list *device);
 int wiimoteglue_epoll_watch_stdin(int epfd);
 void wiimoteglue_epoll_loop(int epfd, struct wiimoteglue_state *state);
 
+int wiimoteglue_load_command_file(struct wiimoteglue_state *state, char *filename);
 int wiimoteglue_handle_input(struct wiimoteglue_state *state, int file);
 int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist);
 
