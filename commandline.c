@@ -39,7 +39,10 @@ char * getwholeline(int file) {
   if(buffer == NULL)
     return NULL;
 
-  for(;;) {
+  /*Loop until a break, or the program as a whole receives a signal
+   *to stop
+   */
+  while(*KEEP_LOOPING) {
     ret = read(file,nextchar,1);
     if(ret <= 0)
       break;

@@ -15,13 +15,19 @@
 
 
 
-struct wiimoteglue_state* gstate;
+
 void signal_handler(int signum) {
   printf("Signal received, attempting to clean up.\n");
-  gstate->keep_looping = 0;
+  *KEEP_LOOPING = 0;
+  /*Technically could segfault if we receive a signal
+   *before the first line of main() where this
+   *pointer is set. But in that case,
+   *is segfaulting really such a crime?
+   */
 }
 
 struct commandline_options {
+  /*Many of these are wishful thinking at the moment*/
   char* file_to_load;
   int number_of_slots;
   int create_keyboardmouse;
@@ -39,7 +45,7 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
 int main(int argc, char *argv[]) {
   struct udev *udev;
   struct wiimoteglue_state state;
-  gstate = &state;
+  KEEP_LOOPING = &state.keep_looping;
   memset(&state, 0, sizeof(state));
   memset(&options, 0, sizeof(options));
   int monitor_fd;
@@ -110,6 +116,7 @@ int main(int argc, char *argv[]) {
 
   //Process user input.
   state.keep_looping = 1;
+
   state.dev_count = 0;
 
   signal(SIGINT, signal_handler);

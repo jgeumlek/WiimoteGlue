@@ -4,7 +4,13 @@
 #include <xwiimote.h>
 #include <libudev.h>
 
-#define WIIMOTEGLUE_VERSION "1.0"
+#define WIIMOTEGLUE_VERSION "1.0.wip"
+/*Let's not lie to ourselves here...
+ *this code is a work in progress
+ *and will change a lot. There isn't
+ *really a true "1.0" release,
+ *and no stability guarantees are made.
+ */
 
 #define ABS_LIMIT 32767
 #define TILT_LIMIT 80
@@ -65,7 +71,13 @@ struct event_map {
 
 
 
-
+/*Mmm... Linked lists.
+ *Ease of insertion and deletion is nice.
+ *Users are unlikely to use more than a handful
+ *of controllers at once, and all lookups/iterations
+ *over this list are done in non-time-critical
+ *situations.
+ */
 struct wii_device_list {
   struct wii_device_list *prev, *next;
 
@@ -87,7 +99,7 @@ struct wiimoteglue_state {
   struct udev_monitor *monitor;
   struct virtual_controller slots[NUM_SLOTS+1]; /*TODO: FIX THIS HARDCODED VALUE.*/
   /*NUM_SLOTS+1 because slot 0 is keyboard/mouse*/
-  int virtual_keyboardmouse_fd;
+  int virtual_keyboardmouse_fd; /*Handy enough to keep around*/
   struct wii_device_list devlist;
   int epfd;
   int keep_looping;
@@ -99,6 +111,8 @@ struct wiimoteglue_state {
   struct event_map mode_classic;
   struct event_map keyboard_mouse; /* unused at the moment */
 };
+
+int * KEEP_LOOPING; //Sprinkle around some checks to let signals interrupt.
 
 enum axis_entries {
   AXIS_CODE,
