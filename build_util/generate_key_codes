@@ -1,0 +1,33 @@
+#!/bin/sh
+
+#Are you having issues with undefined KEY_* constants?
+#Are you willing to do a little work?
+#
+#This utility will read in some KEY_* names, and
+#generate the C code used in commandline.c
+#
+#It is not completely automated, you'll need to do
+#a little copy/pasting.
+
+#STEP 1: Open your <linux/input.h>, find the section with all the
+#        KEY_* constants you want.
+#STEP 2: Copy and paste the entire section of KEY_* definintions
+#        into a file named 'keycodes' 
+#        and place it in this directory
+#STEP 3: Run this script, it prints out the codes.
+#STEP 4: Take those codes, and copy/paste them
+#        into the function 'get_outputkey()'
+#        in commandline.c
+#
+#        Be sure to leave the gamepad button
+#        codes in, just replace the keyboard
+#        section of this function.
+#        (i.e. only start replacing code once
+#         you see KEY_ESC)
+
+grep -o KEY_[A-Z0-9_]\*  keycodes > filtered
+cat filtered | sed -e 's/\(.*\)/  if (strcmp(key_name,"\L\1") == 0) return \U\1;/g'
+
+#Copy the generated code into get_output_key()
+
+

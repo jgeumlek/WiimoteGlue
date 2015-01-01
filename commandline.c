@@ -678,6 +678,7 @@ int get_output_key(char *key_name) {
   if (strcmp(key_name,"key_kp2") == 0) return KEY_KP2;
   if (strcmp(key_name,"key_kp3") == 0) return KEY_KP3;
   if (strcmp(key_name,"key_kp0") == 0) return KEY_KP0;
+#ifndef NO_EXTRA_KEYBOARD_KEYS
   if (strcmp(key_name,"key_kpdot") == 0) return KEY_KPDOT;
   if (strcmp(key_name,"key_zenkakuhankaku") == 0) return KEY_ZENKAKUHANKAKU;
   if (strcmp(key_name,"key_102nd") == 0) return KEY_102ND;
@@ -1017,7 +1018,7 @@ int get_output_key(char *key_name) {
   if (strcmp(key_name,"key_kbdinputassist_nextgroup") == 0) return KEY_KBDINPUTASSIST_NEXTGROUP;
   if (strcmp(key_name,"key_kbdinputassist_accept") == 0) return KEY_KBDINPUTASSIST_ACCEPT;
   if (strcmp(key_name,"key_kbdinputassist_cancel") == 0) return KEY_KBDINPUTASSIST_CANCEL;
-
+#endif
 
   return -2;
 }
