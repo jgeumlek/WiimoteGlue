@@ -93,6 +93,7 @@ struct wiimoteglue_state {
   int keep_looping;
   int load_lines; /*how many lines of loaded files have we processed? */
   int dev_count; /*simple counter for making identifiers*/
+  int ignore_pro; /*ignore Wii U Pro Controllers?*/
   struct event_map mode_no_ext;
   struct event_map mode_nunchuk;
   struct event_map mode_classic;

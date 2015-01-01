@@ -109,8 +109,12 @@ int open_uinput_gamepad_fd() {
 
 int open_uinput_keyboardmouse_fd() {
 
-  static int abs[] = { ABS_X, ABS_Y, ABS_RX, ABS_RY};
-  static int key[] = { BTN_LEFT, BTN_MIDDLE, BTN_RIGHT,BTN_TOUCH};
+  static int abs[] = { ABS_X, ABS_Y};
+  static int key[] = { BTN_LEFT, BTN_MIDDLE, BTN_RIGHT,BTN_TOUCH,BTN_TOOL_PEN};
+  /* BTN_TOOL_PEN seems to successfully hint to evdev that
+   * we are going to be outputting absolute positions,
+   * not relative motions.
+   */
   struct uinput_user_dev uidev;
   int fd;
   int i;
@@ -129,7 +133,7 @@ int open_uinput_keyboardmouse_fd() {
   uidev.id.version = 1;
 
   ioctl(fd, UI_SET_EVBIT, EV_ABS);
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < 2; i++) {
     ioctl(fd, UI_SET_ABSBIT, abs[i]);
     uidev.absmin[abs[i]] = -32768;
     uidev.absmax[abs[i]] = 32768;
@@ -150,7 +154,7 @@ int open_uinput_keyboardmouse_fd() {
 
 
   /*Set standard mouse buttons*/
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < 5; i++) {
     ioctl(fd, UI_SET_KEYBIT, key[i]);
   }
 

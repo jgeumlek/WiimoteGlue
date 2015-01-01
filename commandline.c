@@ -8,6 +8,25 @@
 
 /* Handles user input from STDIN and command files. */
 
+/* Line reading and splitting based off of basic snippets
+ * seen online in various places.
+ *
+ * Command parsing done entirely by hand. No need to
+ * over-engineer this just yet, although consider
+ * this fair warning that ugly code lies below.
+ */
+
+/* should be sufficient, and lets us avoid chewing memory
+ * if the user opens a file with huge lines.
+ * any command has limited length keywords,
+ * so this should be a fair assumption.
+ *
+ * The maximum linelength is
+ * (start size) * 2^n
+ * since each realloc doubles the buffer.
+ */
+#define MAX_REALLOC 5
+
 char * getwholeline(int file) {
   char *buffer = malloc(50);
   char *ptr = buffer;
@@ -15,6 +34,7 @@ char * getwholeline(int file) {
   int spaceleft = totallength;
   char nextchar[2];
   int ret;
+  int reallocs = 0;
 
   if(buffer == NULL)
     return NULL;
@@ -24,7 +44,7 @@ char * getwholeline(int file) {
     if(ret <= 0)
       break;
 
-    if(--spaceleft == 0) {
+    if(spaceleft > 0 && --spaceleft == 0 && reallocs < MAX_REALLOC ) {
       spaceleft = totallength;
       char *newbuff = realloc(buffer, totallength *= 2);
 
@@ -32,10 +52,16 @@ char * getwholeline(int file) {
 	free(buffer);
 	return NULL;
       }
+
       ptr = newbuff + (ptr - buffer);
       buffer = newbuff;
+      reallocs++;
     }
-    if((*ptr++ = nextchar[0]) == '\n')
+
+    if (spaceleft > 0 )
+      *ptr++ = nextchar[0];
+
+    if (nextchar[0] == '\n')
       break;
   }
 
@@ -87,6 +113,10 @@ int wiimoteglue_handle_input(struct wiimoteglue_state *state, int file) {
 }
 
 void process_command(struct wiimoteglue_state *state, char *args[]) {
+  /* lets avoid endless loops on our main thread, and
+   * add some sanity if a person accidentally tries
+   * to open a huge file.
+   */
   if (state->load_lines == MAX_LOAD_LINES) {
       printf("Maximum number of lines for command files exceeded.\n");
       printf("Either you have an endless loop in files loading files,\n");

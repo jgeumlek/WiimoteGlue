@@ -22,6 +22,13 @@ int add_wii_device(struct wiimoteglue_state *state, struct xwii_iface *wiidev, c
 
   list_node->device = wiidev;
   list_node->ifaces = xwii_iface_opened(wiidev);
+
+  if (state->ignore_pro && (list_node->ifaces & XWII_IFACE_PRO_CONTROLLER)) {
+    xwii_iface_unref(wiidev);
+    free(list_node);
+    return -0;
+  }
+
   if (list_node->ifaces & XWII_IFACE_NUNCHUK) {
     list_node->map = &state->mode_nunchuk;
   } else if (list_node->ifaces & (XWII_IFACE_CLASSIC_CONTROLLER | XWII_IFACE_PRO_CONTROLLER)) {

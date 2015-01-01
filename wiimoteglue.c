@@ -27,6 +27,7 @@ struct commandline_options {
   int create_keyboardmouse;
   int check_for_existing_wiimotes;
   int monitor_for_new_wiimotes;
+  int ignore_pro;
   char* virt_gamepad_name;
   char* virt_keyboardmouse_name;
 } options;
@@ -53,6 +54,12 @@ int main(int argc, char *argv[]) {
     return ret;
   }
 
+  if (options.ignore_pro) {
+    printf("Wii U Pro controllers will be ignored.\n");
+    state.ignore_pro = 1;
+  }
+
+
   //Ask how many fake controllers to make... (ASSUME 4 FOR NOW)
   printf("Creating uinput devices (%d gamepads, and a keyboard/mouse combo)...",NUM_SLOTS);
   int i;
@@ -72,6 +79,7 @@ int main(int argc, char *argv[]) {
   state.virtual_keyboardmouse_fd = state.slots[0].uinput_fd;
 
   init_mapping(&state);
+
 
 
 
@@ -151,7 +159,8 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      printf("Recognized Arguments:\n");
      printf("  -h, --help\t\t\tShow help text\n");
      printf("  -v, --version\t\t\tShow version string\n");
-     printf("  -l, --load-file <file>\tLoad the file at start-up.\n");
+     printf("  -l, --load-file <file>\tLoad the file at start-up\n");
+     printf("      --ignore-pro\tIgnore Wii U Pro controllers\n");
      return 1;
    }
    if (strcmp("--version",argv[0]) == 0 || strcmp("-v",argv[0]) == 0) {
@@ -166,6 +175,8 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      options->file_to_load = argv[1];
      argc--;
      argv++;
+   } else if (strcmp("--ignore-pro",argv[0]) == 0) {
+     options->ignore_pro = 1;
    } else {
      printf("Argument \"%s\" not recognized.\n",argv[0]);
      return -1;

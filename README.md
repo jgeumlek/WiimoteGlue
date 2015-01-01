@@ -43,7 +43,15 @@ The Linux kernel driver for wiimotes is pretty handy, but the extension controll
 
 ##Example of Why You Might Use WiimoteGlue
 
-You decide to play \<popular kart racing game\> with just a sideways Wii remote, tilting the controller to steer for some silly fun. After veering off the track repeatedly, it is time to get serious. You plug in the Nunchuk extension controller, and instantly the controls change. Rather than flimsy tilt-based steering, you now have the reliable Nunchuk's control stick handling your steering, and the buttons on the Wii remote have changed as well to match your new grip. After a while, a friend comes by. "Oh hey, it's \<popular kart racing game\>! Can I play? Wait. What's with that funky controller? I don't trust my left and right hands to be separated by a cord, and there's no way that has enough buttons." Before they turn away, you manage to swap the Nunchuk our for a Wii Classic Controller. Like magic, the controller works as expected. No need to fiddle with control mappings every time an extension changes, and no need to change the game options to use the newly connected Classic Controller. Your friend, eased by the comforting vague familiarity of the Classic Controller, enjoys their race.
+You decide to play \<popular kart racing game\> with just a sideways Wii remote, tilting the controller to steer for some silly fun.
+
+After veering off the track repeatedly, it is time to get serious. You plug in the Nunchuk extension controller, and instantly the controls change. Rather than flimsy tilt-based steering, you now have the reliable Nunchuk's control stick handling your steering, and the buttons on the Wii remote have changed as well to match your new grip.
+
+After a while, a friend comes by. "Oh hey, it's \<popular kart racing game\>! Can I play? Wait. What's with that funky controller? I don't trust my left and right hands to be separated by a cord, and there's no way that has enough buttons."
+
+Before they turn away, you manage to swap the Nunchuk our for a Wii Classic Controller. Like magic, the controller works as expected. No need to fiddle with control mappings every time an extension changes, and no need to change the game options to use the newly connected Classic Controller. Your friend, eased by the comforting vague familiarity of the Classic Controller, enjoys their race.
+
+After they leave, you remove the Classic Controller, change a few mappings in WiimoteGlue, connect a Wii Balance Board, and decide to try steering with your feet.
 
 ##Documentation
 
@@ -91,10 +99,11 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 
 ##Known Issues
 
-* Keyboard/mouse emulation is in early stages. Notably the virtual mouse is picked up by evdev in "relative" mode, when it should be in "absolute" mode.
+* Keyboard/mouse emulation is in early stages.
 * Though each controller can be in a different mode depending on its extension, there is just one mapping for each mode.
 * Sometimes extensions aren't detected, especially when already inserted when a wiimote connects. Unplugging them and re-inserting generally fixes this.
 * Though the Wii U Pro supports changing the button mappings and axis mappings, it does not allow inverting the axes.
+* Since the Wii U Pro is already detected by SDL, grabbing leads to "duplicate" controllers.
 * Number of virtual gamepads is hard-coded to 4.
 * Any wiimotes connected before starting WiimoteGlue will be ignored.
 * Currently single-threaded to handle all input events across all controllers. May introduce latency? Most shared data is written only by the command interface; it is only read elsewhere. The real trouble points are adding/deleting entries of the devicelist and keeping track of STDIN commands versus commands from a file.
@@ -110,7 +119,7 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Virtual output devices aren't "cleared" when their input sources are removed. If you remap a button while it is held down (or an uncentered axis), the old mapping will be "frozen" to whatever input it had last.
 
 
-##FAQ-ish
+##Troubleshooting FAQ-ish Section
 
 ###What's this about file permissions for the devices?
 WiimoteGlue will fail if you don't have the right permissions, and you likely won't have the right permissions unless you do some extra work. Though not recommended for regular use, running WiimoteGlue as a super-user can be a useful way to try it out before you have the permissions sorted out.
@@ -154,13 +163,19 @@ Playstation controllers don't even use labels like A,B, or Y but instead use sha
 
 BTN_SOUTH is also identified as BTN_GAMEPAD, and is considered the primary button; according to the Linux gamepad API, outputting BTN_GAMEPAD is what makes a gamepad a gamepad. (SDL however has an extra requirement of outputting ABS_X and ABS_Y)
 
+###When I mapped my control stick to the mouse, centering the stick centers the cursor. this doesn't seem very useful?
+
+This is the intended functionality of WiimoteGlue. It outputs the absolute positions from the stick as absolute positions on the virtual mouse.
+
+"Steering" the cursor with the stick would likely be more useful, but would need to be handled in a way fundamentally different from how WiimoteGlue now works. In WiimoteGlue, if the stick doesn't move, no events are generated at all. To steer the cursor, we'd need to consistently and regularly generate events even when the stick is held still in a certain direction.
+
 ###This fake mouse pointer is all wonky. Is it working right?
 
-The fake mouse is currently auto-detected by evdev, but it starts out in "relative" mode (which is what is right for most mice). We need it to be in "absolute mode"
+The fake mouse should be auto-detected by evdev in "absolute" mode, but it might have been set to "relative" which is the general mode used by mice.
 
     xinput --set-mode "WiimoteGlue Virtual Keyboard and Mouse" ABSOLUTE
 
-will fix this, and it needs to be run each time after starting WiimoteGlue. The mouse emulation is a work-in-progress, and hopefully this won't be required in the future.
+will fix this, and this setting does not persist after closing WiimoteGlue.
 
 Also note that the infared and accelerometer readings aren't smoothed at all, so using them for controlling the mouse cursor will be noisy.
 
@@ -195,6 +210,8 @@ to see all device names, and the "1" can be replaced by "2","3", or "4" to affec
 
 Note that each mode still has exactly one control mapping, regardless of whether the devices are mapped to a fake keyboard or fake gamepad. Since the fake keyboard ignores gamepad events and gamepads ignore keyboard events, one device can't simultaneously send keyboard/mouse and gamepad events.
 
+Changing the slot rather the device to point to a keyboard is nice since it means future devices connected to the slot will automatically point to the keyboard.
+
 ###How do I connect a wiimote?
 
 That is outside the scope of WiimoteGlue. Your bluetooth system handles this. This software assumes your bluetooth stack and kernel wiimote driver are already working and usable.
@@ -220,6 +237,19 @@ Another fun fact about the classic controller kernel driver: since it doesn't ma
 (To be fair, I'll point out that the kernel driver for the classic controller predates the Linux gamepad API where the dpad event codes were formalized, and it is thanks to David Herrmann that both the kernel driver and the gamepad API exist, along with xwiimote. Thanks for all the work!)
 
 [For those curious, SDL requires a device to give out BTN_SOUTH and ABS_X/ABS_Y to be detected. The wiimote alone doesn't have ABS_X, the nunchuk doesn't have BTN_SOUTH, and the classic controller doesn't have ABS_X. The Wii U Pro does meet the SDL gamepad requirements under the kernel driver.]
+
+###That duplicated Wii U Pro controller issue is annoying. What can I do?
+
+There are a few work arounds of various ugliness:
+
+1. Assign the pro controller to the "none" slot in WiimoteGlue. WiimoteGlue will ignore it, and you can use the original Wii U Pro device.
+2. Delete the original pro controller device after WiimoteGlue has opened it, but before you start the game. WiimoteGlue will hold onto its already opened interface, but the game won't.
+
+If Option #1 sounds better to you, the "--ignore-pro" command line argument for WiimoteGlue is likely what you seek.
+
+One potential work-around would be to have the Wii U Pro event device grabbed with EVIOCGRAB to get it's events exclusively, but I don't think xwiimote has a convenient way to do this. Since Pro controllers don't have extensions to track, it might be worth handling them manually just to do this. (We'd just have to track the single event device + the four LED devices for full functionality.)
+
+##Features of WiimoteGlue FAQ-ish section
 
 ###Infared data?
 
@@ -323,6 +353,12 @@ One could create a virtual device that has all the functionality of a gamepad, k
 
 By separating them, the gamepads are automagically picked up as gamepads, the fake keyboard/mouse is picked up as a keyboard/mouse, and not much extra work is needed.
 (When the absolute/relative issue is fixed, it'll be no extra work at all!)
+
+The evdev autodetection is pretty nice; let's let it do the work, even if we need to jump through a couple hoops to give it the right nudges.
+
+Theoretically WiimoteGlue could keep track of virtual device outputs on a per-button basis rather than per-device, but that seems like a lot of extra complexity for little gain. If you have a valid use case for a single wiimote having both gamepad buttons and keyboard keys on it, it'll be considered.
+
+Maybe make it so mapping a button automagically switches that mode to prefer the keyboard or gamepad device might be work out well?
 
 ###Why not have WiimoteGlue talk to X directly to emulate the mouse when needed?
 
