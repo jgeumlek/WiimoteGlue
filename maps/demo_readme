@@ -9,7 +9,7 @@
 #WiimoteGlue works under a system of modes.
 #Each mode has its own control mapping.
 
-#assing sets control mappings, it has this format:
+#The map command sets control mappings, it has this format:
 #   map <mode> <wii input event> <gamepad output event>
 
 map nunchuk up up
