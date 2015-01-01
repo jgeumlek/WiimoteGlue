@@ -11,24 +11,35 @@ to build it, and
 
 to run it.
 
+It requires udev, uinput, and xwiimote.
+
+https://github.com/dvdhrm/xwiimote (also available in the AUR https://aur.archlinux.org/packages/xwiimote/ )
+
+You'll need certain file permissions on the uinput and wiimote event devices. Depending on your distro, you might need to edit uinput.c to use the appropriate location for uinput on your system. WiimoteGlue assumes it is at /dev/uinput
+
+
 ##Motivation
 
-The Linux kernel driver for wiimotes is pretty handy, but the extension controllers like the Nunchuk show up as separate devices. Extra features like the accelerometers or infared sensors also show up as separate devices. Since very little software supports taking input from multiple devices for a single player, using a wiimote for tilt controls or using the wiimote/nunchuk combo is rarely doable. WiimoteGlue acts to combine these into a synthetic gamepad, and adds some extra features to further improve usability.
+The Linux kernel driver for wiimotes is pretty handy, but the extension controllers like the Nunchuk show up as separate devices. Not just that, extra features like the accelerometers or infared sensors also show up as separate devices. Not many games support taking input from multiple devices for a single player, so using a wiimote for tilt controls or using the wiimote/nunchuk combo is often not possible. WiimoteGlue acts to combine these into a synthetic gamepad, and adds some extra features to further improve usability.
 
 ##Features
 
 * Creates synthetic virtual gamepads that work in most modern software that expect gamepads.
 * Supports extension controllers such as the nunchuk or classic controller.
-* Configurable button mappings to get that ideal control scheme.
+* Configurable at run-time button mappings to get that ideal control scheme.
 * Also grabs Wii U pro controllers and allows remapping buttons.
 * Dynamic control mappings that change when extensions are inserted or removed.
 * Basic processing of accelerometer or infared data.
 * Basic support of the Wii Balance Board in addition to a standard controller. Surf your way through your games!
-* Read in control mappings from files.
+* Read in control mappings from files. Set up a file per game, and you can switch between them easily.
 * Uses the Linux gamepad API button defintions rather than ambiguous labels like "A","B","X","Y"  or "Button 0" for the virtual gamepad.
 * Virtual gamepads persist for as long as WiimoteGlue is running, so even software not supporting gamepad hotplugging can be oblivious to Wii remotes connecting/disconnecting.
 * Also creates a virtual keyboard/mouse device that can be mapped.
 * Assuming proper file permissions on input devices, this does not require super-user privileges.
+
+##Example of Why You Might Use WiimoteGlue
+
+You decide to play <popular kart racing game> with just a sideways Wii remote, tilting the controller to steer for some silly fun. After veering off the track repeatedly, it is time to get serious. You plug in the Nunchuk extension controller, and instantly the controls change. Rather than flimsy tilt-based steering, you now have the reliable Nunchuk's control stick handling your steering, and the buttons on the Wii remote have changed as well to match your new grip. After a while, a friend comes by. "Oh hey, it's <popular kart racing game>! Can I play? Wait. What's with that funky controller? I don't trust my left and right hands to be separated by a cord, and there's no way that has enough buttons." Before they turn away, you manage to swap the Nunchuk our for a Wii Classic Controller. Like magic, the controller works as expected. No need to fiddle with control mappings every time an extension changes, and no need to change the game options to use the newly connected Classic Controller. Your friend, eased by the comforting vague familiarity of the Classic Controller, enjoys their race.
 
 ##Documentation
 
@@ -92,6 +103,7 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Not really designed to handle multiple instances of WiimoteGlue running, mostly due to them grabbing the same wiimotes.
 * No current way to change directory used for loading command files; it is just the current directory from when WiimoteGlue was run.
 * Only the default classic control mappings technically follow the Linux gamepad standards. The wiimote and wiimote/nunchuk default mappings were chosen to be vaguely useful in most games, rather than following the standard to the letter.
+* Virtual output devices aren't "cleared" when their input sources are removed. If you remap a button while it is held down (or an uncentered axis), the old mapping will be "frozen" to whatever input it had last.
 
 
 ##FAQ-ish
@@ -220,6 +232,16 @@ Adding in support for multiple IR sources can improve the data, and allow for so
 Every virtual gamepad slot can have at most one standard controller (wiimote+extensions or Wii U pro controller) and one balance board allocated to it. When a balance board is connected, it gets assigned to the first virtual gamepad with no board assigned yet.
 
 Currently does a rough average across the four weight sensors to get a center of gravity, and also adds a fair bit of margin to allow it to go full tilt.
+
+Note that the balance board *always* uses the "wiimote" mode mappings, even when extensions are connected.
+
+    map wiimote bal_x left_x
+
+will map *all* balance boards to left_x, regardless of the the presence or absence of nunchuks or other extensions on the controller assigned to the same slot as the balance board.
+
+    map nunchuk bal_x left_x
+
+should have no effect.
 
 Most games don't really handle the large shifts of a standing person well, but using it with one's feet while seated in a chair is surprisingly effective.
 

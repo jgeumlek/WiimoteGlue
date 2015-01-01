@@ -147,7 +147,9 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
     printf("\tn_x, n_y - nunchuck control stick axes\n");
     printf("\tleft_x, left_y - classic/pro left stick axes\n");
     printf("\tright_x, right_y - classic/pro right stick axes\n");
-    printf("\tbal_fl,bal_fr,bal_bl,bal_br - balance board front/back left/right axes\n");
+    /*Not implemented at the moment.
+     * printf("\tbal_fl,bal_fr,bal_bl,bal_br - balance board front/back left/right axes\n");
+     */
     printf("\tbal_x,bal_y - balance board center-of-gravity axes.\n");
     printf("\n");
 
@@ -408,6 +410,8 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
     }
     if (slot != NULL) {
       slot->has_wiimote++;
+      if (slot->has_wiimote > 1)
+	printf("Mutiple controllers assigned to a slot!\nSafety not guaranteed.\n");
     }
   }
   if (device->type == BALANCE) {
@@ -416,6 +420,8 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
     }
     if (slot != NULL) {
       slot->has_board++;
+      if (slot->has_board > 1)
+	printf("Mutiple boards assigned to a slot!\nSafety not guaranteed.\n");
     }
   }
   device->slot = slot;
