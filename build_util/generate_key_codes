@@ -1,33 +1,139 @@
 #!/bin/sh
 
 #Are you having issues with undefined KEY_* constants?
-#Are you willing to do a little work?
-#
-#This utility will read in some KEY_* names, and
-#generate the C code used in commandline.c
-#
-#It is not completely automated, you'll need to do
-#a little copy/pasting.
+#If not, this isn't for you.
 
-#STEP 1: Open your <linux/input.h>, find the section with all the
-#        KEY_* constants you want.
-#STEP 2: Copy and paste the entire section of KEY_* definintions
-#        into a file named 'keycodes' 
-#        and place it in this directory
-#STEP 3: Run this script, it prints out the codes.
-#STEP 4: Take those codes, and copy/paste them
-#        into the function 'get_outputkey()'
-#        in commandline.c
-#
-#        Be sure to leave the gamepad button
-#        codes in, just replace the keyboard
-#        section of this function.
-#        (i.e. only start replacing code once
-#         you see KEY_ESC)
+FILE="/usr/include/linux/input.h"
 
-grep -o KEY_[A-Z0-9_]\*  keycodes > filtered
-cat filtered | sed -e 's/\(.*\)/  if (strcmp(key_name,"\L\1") == 0) return \U\1;/g'
+if [ "$#" -ne 1 ]; then
+  if [ -e "$FILE" ]; then
+    echo "Assuming /usr/include/linux/input.h"
+    echo "If this is wrong, specify the correct"
+    echo "path as the first argument to this script."
+    echo ""
 
-#Copy the generated code into get_output_key()
+  else
+    echo "Could not find linux/input.h" >&2
+    echo "Usage: $0 <path to linux/input.h>" >&2
+    exit 1
+  fi
+else
+  FILE=$1
+fi
+if ! [ -e "$FILE" ]; then
+  echo "$1 not found" >&2
+  exit 1
+fi
+
+cat <<CONSTANT_CODE_PREFIX >key_codes.c
+#include <linux/input.h>
+#include <string.h>
+#include <xwiimote.h>
+
+#include "wiimoteglue.h"
+
+int * get_input_key(char *key_name, int button_map[]) {
+  if (key_name == NULL) return NULL;
+  if (strcmp(key_name,"up") == 0) return &button_map[XWII_KEY_UP];
+  if (strcmp(key_name,"down") == 0) return &button_map[XWII_KEY_DOWN];
+  if (strcmp(key_name,"left") == 0) return &button_map[XWII_KEY_LEFT];
+  if (strcmp(key_name,"right") == 0) return &button_map[XWII_KEY_RIGHT];
+  if (strcmp(key_name,"a") == 0) return &button_map[XWII_KEY_A];
+  if (strcmp(key_name,"b") == 0) return &button_map[XWII_KEY_B];
+  if (strcmp(key_name,"c") == 0) return &button_map[XWII_KEY_C];
+  if (strcmp(key_name,"x") == 0) return &button_map[XWII_KEY_X];
+  if (strcmp(key_name,"y") == 0) return &button_map[XWII_KEY_Y];
+  if (strcmp(key_name,"z") == 0) return &button_map[XWII_KEY_Z];
+  if (strcmp(key_name,"plus") == 0) return &button_map[XWII_KEY_PLUS];
+  if (strcmp(key_name,"minus") == 0) return &button_map[XWII_KEY_MINUS];
+  if (strcmp(key_name,"home") == 0) return &button_map[XWII_KEY_HOME];
+  if (strcmp(key_name,"1") == 0) return &button_map[XWII_KEY_ONE];
+  if (strcmp(key_name,"2") == 0) return &button_map[XWII_KEY_TWO];
+  if (strcmp(key_name,"l") == 0) return &button_map[XWII_KEY_TL];
+  if (strcmp(key_name,"r") == 0) return &button_map[XWII_KEY_TR];
+  if (strcmp(key_name,"zl") == 0) return &button_map[XWII_KEY_ZL];
+  if (strcmp(key_name,"zr") == 0) return &button_map[XWII_KEY_ZR];
+  if (strcmp(key_name,"thumbl") == 0) return &button_map[XWII_KEY_THUMBL];
+  if (strcmp(key_name,"thumbr") == 0) return &button_map[XWII_KEY_THUMBR];
+  return NULL;
+}
+
+int * get_input_axis(char *axis_name, struct event_map *map) {
+  if (axis_name == NULL) return NULL;
+  if (strcmp(axis_name,"accelx") == 0) return map->accel_map[0];
+  if (strcmp(axis_name,"accely") == 0) return map->accel_map[1];
+  if (strcmp(axis_name,"accelz") == 0) return map->accel_map[2];
+  if (strcmp(axis_name,"n_accelx") == 0) return map->accel_map[3];
+  if (strcmp(axis_name,"n_accely") == 0) return map->accel_map[4];
+  if (strcmp(axis_name,"n_accelz") == 0) return map->accel_map[5];
+  if (strcmp(axis_name,"left_x") == 0) return map->stick_map[0];
+  if (strcmp(axis_name,"left_y") == 0) return map->stick_map[1];
+  if (strcmp(axis_name,"right_x") == 0) return map->stick_map[2];
+  if (strcmp(axis_name,"right_y") == 0) return map->stick_map[3];
+  if (strcmp(axis_name,"n_x") == 0) return map->stick_map[4];
+  if (strcmp(axis_name,"n_y") == 0) return map->stick_map[5];
+  if (strcmp(axis_name,"ir_x") == 0) return map->IR_map[0];
+  if (strcmp(axis_name,"ir_y") == 0) return map->IR_map[1];
+  if (strcmp(axis_name,"bal_fl") == 0) return map->balance_map[0];
+  if (strcmp(axis_name,"bal_fr") == 0) return map->balance_map[1];
+  if (strcmp(axis_name,"bal_bl") == 0) return map->balance_map[2];
+  if (strcmp(axis_name,"bal_br") == 0) return map->balance_map[3];
+  if (strcmp(axis_name,"bal_x") == 0) return map->balance_map[4];
+  if (strcmp(axis_name,"bal_y") == 0) return map->balance_map[5];
+
+  return NULL;
+}
+
+int get_output_key(char *key_name) {
+  if (key_name == NULL) return -2;
+  if (strcmp(key_name,"up") == 0) return BTN_DPAD_UP;
+  if (strcmp(key_name,"down") == 0) return BTN_DPAD_DOWN;
+  if (strcmp(key_name,"left") == 0) return BTN_DPAD_LEFT;
+  if (strcmp(key_name,"right") == 0) return BTN_DPAD_RIGHT;
+  if (strcmp(key_name,"north") == 0) return BTN_NORTH;
+  if (strcmp(key_name,"south") == 0) return BTN_SOUTH;
+  if (strcmp(key_name,"east") == 0) return BTN_EAST;
+  if (strcmp(key_name,"west") == 0) return BTN_WEST;
+  if (strcmp(key_name,"start") == 0) return BTN_START;
+  if (strcmp(key_name,"select") == 0) return BTN_SELECT;
+  if (strcmp(key_name,"mode") == 0) return BTN_MODE;
+  if (strcmp(key_name,"tr") == 0) return BTN_TR;
+  if (strcmp(key_name,"tl") == 0) return BTN_TL;
+  if (strcmp(key_name,"tr2") == 0) return BTN_TR2;
+  if (strcmp(key_name,"tl2") == 0) return BTN_TL2;
+  if (strcmp(key_name,"thumbr") == 0) return BTN_THUMBR;
+  if (strcmp(key_name,"thumbl") == 0) return BTN_THUMBL;
+  if (strcmp(key_name,"thumbl") == 0) return BTN_THUMBL;
+  if (strcmp(key_name,"none") == 0) return NO_MAP;
+  if (strcmp(key_name,"left_click") == 0) return BTN_LEFT;
+  if (strcmp(key_name,"right_click") == 0) return BTN_RIGHT;
+  if (strcmp(key_name,"middle_click") == 0) return BTN_MIDDLE;
+CONSTANT_CODE_PREFIX
+
+
+grep -o KEY_[A-Z0-9_]\*  $FILE | sed -e 's/\(.*\)/  if (strcmp(key_name,"\L\1") == 0) return \U\1;/g' >>key_codes.c
+
+cat <<CONSTANT_CODE_SUFFIX >>key_codes.c
+
+  return -2;
+}
+
+int get_output_axis(char *axis_name) {
+  if (axis_name == NULL) return -2;
+  if (strcmp(axis_name,"left_x") == 0) return ABS_X;
+  if (strcmp(axis_name,"left_y") == 0) return ABS_Y;
+  if (strcmp(axis_name,"right_x") == 0) return ABS_RX;
+  if (strcmp(axis_name,"right_y") == 0) return ABS_RY;
+  if (strcmp(axis_name,"mouse_x") == 0) return ABS_X;
+  if (strcmp(axis_name,"mouse_y") == 0) return ABS_Y;
+  if (strcmp(axis_name,"none") == 0) return NO_MAP;
+
+  return -2;
+}
+CONSTANT_CODE_SUFFIX
+
+echo "File key_codes.c has been generated. Please ensure it is located in the right spot."
+
+
 
 

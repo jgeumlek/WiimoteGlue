@@ -168,4 +168,11 @@ int wiimoteglue_handle_input(struct wiimoteglue_state *state, int file);
 int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist);
 
 int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device_list *dev);
+
+
+int * get_input_key(char *key_name, int button_map[]);
+int * get_input_axis(char *axis_name, struct event_map *map);
+int get_output_key(char *key_name);
+int get_output_axis(char *axis_name);
+
 #endif

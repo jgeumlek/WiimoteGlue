@@ -148,7 +148,7 @@ int open_uinput_keyboardmouse_fd() {
   for (i = 2; i < BTN_MISC; i++) {
     ioctl(fd, UI_SET_KEYBIT, i);
   }
-  for (i = KEY_OK; i < KEY_KBDINPUTASSIST_CANCEL; i++) {
+  for (i = KEY_OK; i < KEY_MAX; i++) {
     ioctl(fd, UI_SET_KEYBIT, i);
   }
 
