@@ -31,7 +31,9 @@ WiimoteGlue will start up and wait for Wii remotes to show up. WiimoteGlue will 
 to see the (very few) command line arguments.
 
 
-You'll need certain file permissions on the uinput and wiimote event devices. Depending on your distro, you might need to edit uinput.c to use the appropriate location for uinput on your system. WiimoteGlue assumes it is at /dev/uinput
+You'll need certain file permissions on the uinput and wiimote event devices.
+
+You might need to use --uinput-path to tell WiimoteGlue where the uinput device is on your system. (You might even need to modprobe uinput)
 
 
 
@@ -122,7 +124,6 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Virtual gamepads don't change their axis sensitivities or deadzones when their input sources change. The deadzone ideal for a thumb stick might not be the ideal for a tilt control.
 * Code is messy as a personal project. Particularly, i18n was not a concern when writing it. Sorry.
 * Uses a udev monitor per wiimote despite xwiimote saying not to do that.
-* Assumes uinput is located at /dev/uinput
 * Wiimote buttons are still processed when a classic controller is present, despite duplicate buttons. The duplicate button events are mapped the same, and interleaved onto to the synthetic gamepad, but this generally isn't a huge problem.
 * Not really designed to handle multiple instances of WiimoteGlue running, mostly due to them grabbing the same wiimotes.
 * Virtual output devices aren't "cleared" when their input sources are removed. If you remap a button while it is held down (or an uncentered axis), the old mapping will be "frozen" to whatever input it had last.
