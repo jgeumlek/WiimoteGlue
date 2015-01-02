@@ -82,7 +82,7 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 
 ##Future Goals
 
-* Set the player number LEDs on the controllers to match the virtual gamepad numbers.
+
 * Add multi-threading for processing the input events.
 * Improve the accelerometer/infared/balance board processing
 * Add a "waggle button" that is triggered when the wiimote or nunchuk are shaken.
@@ -93,7 +93,6 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Improve the control mapping files to be less cumbersome.
 * Way off: add in a GUI or interface for controlling the driver outside of the the driver's STDIN. System tray icon?
 * A means of calibrating the axes?
-* A means to reallocate Wii devices to the virtual gamepads.
 * Clean up the command line STDIN interface.
 * A reasonable way to let separate controllers have separate control mappings while not making extra work when the same mapping is wanted on all.
 * Clean and document the code in general.
@@ -101,13 +100,13 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 
 ##Known Issues
 
-* Though each controller can be in a different mode depending on its extension, there is just one mapping for each mode.
+* Though each controller can be in a different mode depending on its extension, there are just two mappings for each mode: gamepad or keyboard.
 * Sometimes extensions aren't detected, especially when already inserted when a wiimote connects. Unplugging them and re-inserting generally fixes this.
 * Though the Wii U Pro supports changing the button mappings and axis mappings, it does not allow inverting the axes.
 * Since the Wii U Pro is already detected by SDL, WiimoteGlue leads to "duplicate" controllers.
 * Number of virtual gamepads is hard-coded to 4.
 * Any wiimotes connected before starting WiimoteGlue will be ignored.
-* Keyboard/mouse emulation is not perfect.
+* Keyboard/mouse emulation is not perfect. Expect changes in the interface.
 * Currently single-threaded, handling all input events across all controllers. May introduce latency?
 * Virtual gamepads don't change their axis sensitivities or deadzones when their input sources change. The deadzone ideal for a thumb stick might not be the ideal for a tilt control.
 * Code is messy as a personal project. Particularly, i18n was not a concern when writing it. Sorry.
@@ -115,7 +114,6 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Assumes uinput is located at /dev/uinput
 * Wiimote buttons are still processed when a classic controller is present, despite duplicate buttons. The duplicate button events are mapped the same, and interleaved onto to the synthetic gamepad, but this generally isn't a huge problem.
 * Not really designed to handle multiple instances of WiimoteGlue running, mostly due to them grabbing the same wiimotes.
-* No current way to change directory used for loading command files; it is just the current directory from when WiimoteGlue was run.
 * Virtual output devices aren't "cleared" when their input sources are removed. If you remap a button while it is held down (or an uncentered axis), the old mapping will be "frozen" to whatever input it had last.
 
 
@@ -180,9 +178,18 @@ will fix this, and this setting does not persist after closing WiimoteGlue.
 
 Also note that the infared and accelerometer readings aren't smoothed at all, so using them for controlling the mouse cursor will be noisy.
 
+
 ###I mapped buttons to the keyboard/mouse, but they aren't doing anything?
 
-Any keyboard or mouse events sent to a virtual gamepad are ignored. You'll need to do one of the following:
+First, note that you need to specify you wish to change the keyboard mapping instead of the gamepad one.
+
+    map keyboardmouse <mode> <wiimote input event> <virtual output event>
+
+where "<mode>" is one of the extension modes: wiimote, nunchuk, or classic.
+
+"keyboardmouse" names a mapping, and a mapping has all three modes. When no mapping name is given, the "map" command assumes you meant the "gamepad" mapping.
+
+Secondly, any keyboard or mouse events sent to a virtual gamepad are ignored. You'll need to do one of the following:
 
     assign <device name> keyboardmouse
 
@@ -320,7 +327,7 @@ Currently buttons can only be mapped to buttons, and axes can only be mapped to 
 
 ###What are the default mappings anyways?
 
-I don't have this information in a handy format. Hopefully the "init_mapping()" function in wiimoteglue.c will be sufficiently readable for the curious.
+I don't have this information in a handy format. Hopefully the "init_*_mapping()" functions in control_mappings.c will be sufficiently readable for the curious.
 
 ###Motion Plus?
 
@@ -353,7 +360,6 @@ The X11 driver is also handy, but it is designed for emulating a keyboard/mouse 
 One could create a virtual device that has all the functionality of a gamepad, keyboard, and mouse all-in-one. However, both mice and gamepads use ABS_X and ABS_Y. If it was one device, I'd need to tell X to ignore or pay attention to ABS_X/Y depending on whether we are in gamepad mode or mouse mode, since most people don't want their gamepads controlling the cursor.
 
 By separating them, the gamepads are automagically picked up as gamepads, the fake keyboard/mouse is picked up as a keyboard/mouse, and not much extra work is needed.
-(When the absolute/relative issue is fixed, it'll be no extra work at all!)
 
 The evdev autodetection is pretty nice; let's let it do the work, even if we need to jump through a couple hoops to give it the right nudges.
 
@@ -370,7 +376,7 @@ Maybe make it so mapping a button automagically switches that mode to prefer the
 
 At the moment, this functionality doesn't give much advantage over just using the Wii U Pro controller directly. It does let the buttons be remapped, which can be nice for switching around the face buttons.
 
-In the future when WiimoteGlue changes the player LEDs to match slot numbers, grabbing the Pro controllers will let them use their LEDs in a meaningful way.
+Since WiimoteGlue handles LEDs based on slots, it makes a handy indicator on the pro controller.
 
 If one desires the balance board combo control schemes, grabbing the Wii U Pro controllers makes them usable for that.
 

@@ -2,9 +2,13 @@
 #Any of these commands can be entered on STDIN,
 #or loaded from a file.
 #Clearly the "#" lets you make comments.
-#
+
 #This demonstration is still a bit confusing...
 #It needs some work!
+
+################################################
+# Basics of mapping buttons in different modes #
+################################################
 
 #WiimoteGlue works under a system of modes.
 #Each mode has its own control mapping.
@@ -46,14 +50,16 @@ map nunchuk a south
 #a face button (east). Once the nunchuk is plugged in,
 #the B button becomes the right trigger.
 
+
+#in both modes, the "A" button on the wiimote was
+#maped to "south", the primary action button
+#on the virtual gamepad.
+
 #Hopefully the usefulness is becoming clear.
 #There is one other mode, "classic". It used when either
 #a classic controller is plugged in, or for the Wii U pro
 #controller.
 
-#in both modes, the "A" button on the wiimote was
-#maped to "south", the primary action button
-#on the virtual gamepad.
 
 #you can also map the accelerometers based on mode
 
@@ -67,6 +73,7 @@ map wiimote accely left_x invert
 #by default
 
 enable wiimote accel
+
 #"disable wiimote accel" to turn them off
 
 #Note that wiimote here refers to the mode, not the device.
@@ -75,9 +82,120 @@ enable wiimote accel
 
 #"ir" is another feature that is off by default.
 
+#enable wiimote ir
+#disable wiimote ir
+
+#Instead of specifying each mode, you can use "all"
+#(later map commands can change this for a specific mapping)
+
+map all home mode
+
+#now all three modes have home set to mode.
+
+
+
 #enter in "help" for all commands.
 #enter in "events" to see all recongized event names
 #        for use with the "map" command.
 #similarly, "features" reminds you about the recognized
 #        features to enable/disable.
 #enter in "modes" to see the different mode names.
+
+#################
+# Saving Setups #
+#################
+
+#At the moment, you'll need to create a text file
+#with all the various commands used, each on
+#their own line, much like this file.
+
+#load <filename>
+
+#That "load" command will read the file line by line and
+#run the commands inside.
+
+##############################
+# Changing Controller Slots  #
+##############################
+
+#Want to move a device to a different slot?
+
+assign <devname> 2
+
+#This will assign the device with ID "<devname>" to slot #2.
+#Use "list" to see the device IDs.
+
+#You can also use the lowercase bluetooth address in place
+#of the device id
+
+##############################
+# Keyboard and Mouse Mapping #
+##############################
+
+#WiimoteGlue also lets you map wiimote inputs to a fake
+#keyboard and mouse. However, it takes a little extra work.
+#
+#In order to have the fake devices be detected correctly,
+#we need to separate our fake keyboard from our fake gamepads.
+#
+#There are two ways to tell WiimoteGlue you'd like to use
+#the fake keyboard/mouse.
+
+#Option 1: Assign a device straight to the fake keyboard.
+#--------------------------------------------------------
+
+assign <devname> keyboardmouse
+
+#Where <devname> is a device ID or address, like in the
+#previous section
+
+#Option 2: Change a slot to be a keyboard instead of a gamepad.
+#--------------------------------------------------------------
+
+slot 1 keyboardmouse
+
+#Now slot #1 is a fake keyboard instead of a fake gamepad.
+#Any devices assigned to this slot will automatically
+#be able to send keyboard or mouse events.
+
+#The keyboard/mouse mapping
+#--------------------------
+
+#The fake keyboard maintains its own mapping, and the mapping
+#has all three modes (no extension/nunchuk/classic) too.
+#
+#This is nice, since keyboard events are useless for fake
+#gamepads, and vice versa.
+#
+#but how do we change these mappings?
+#The "map" command has an optional second parameter
+#specifying the mapping as well as the mode we'd like
+#to change. When not present, it defaults to "gamepad"
+
+map nunchuk b tr2
+map gamepad nunchuk b tr2
+
+#The two above commands are identical, and they change
+#the mapping of the B button on the wiimote to TR2
+#when the nunchuk is plugged in, and the wiimote is
+#assigned to virtual gamepad.
+
+map keyboardmouse all b right_click
+map keyboardmouse wiimote a key_leftshift
+
+#these change the keyboardmouse mapping, which is used
+#if a device is assigned to the keyboardmouse slot, or
+#a slot that has been changed to a fake keyboard/mouse.
+
+#Note that although the mapping name is optional,
+#(defaulting to "gamepad")
+#The mode name is not optional. You must specify
+#wiimote, nunchuk, classic, or all
+
+#In the future, WiimoteGlue will support creating
+#other named mappings, allowing you to set up a
+#slot specific or device specific mapping, but
+#for now, there are just two named mappings:
+#"gamepad" and "keyboardmouse" and they are
+#treated specially.
+

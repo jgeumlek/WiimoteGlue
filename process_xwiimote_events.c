@@ -46,11 +46,15 @@ int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist) {
       xwii_iface_close(dev->device,XWII_IFACE_IR);
     }
   }
+
+
   if (dev->next != NULL) {
     wiimoteglue_update_wiimote_ifaces(dev->next);
   }
   return 0;
 }
+
+
 
 int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device_list *dev) {
   struct xwii_event ev;
@@ -69,7 +73,7 @@ int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_dev
 
   } else if (ret != -EAGAIN) {
 
-    struct event_map* mapping = &state->mode_no_ext;
+    struct event_map* mapping;
 
 
     mapping = dev->map;
@@ -104,13 +108,7 @@ int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_dev
       xwii_iface_open(dev->device,XWII_IFACE_CLASSIC_CONTROLLER | XWII_IFACE_NUNCHUK | XWII_IFACE_PRO_CONTROLLER | XWII_IFACE_BALANCE_BOARD);
       dev->ifaces = xwii_iface_opened(dev->device);
 
-      if (dev->ifaces & XWII_IFACE_NUNCHUK) {
-	dev->map = &state->mode_nunchuk;
-      } else if (dev->ifaces & (XWII_IFACE_CLASSIC_CONTROLLER | XWII_IFACE_PRO_CONTROLLER)) {
-	dev->map = &state->mode_classic;
-      } else {
-	dev->map = &state->mode_no_ext;
-      }
+      compute_device_map(state,dev);
 
       if (dev->map->accel_active) {
 	xwii_iface_open(dev->device,XWII_IFACE_ACCEL);

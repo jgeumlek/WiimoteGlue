@@ -4,7 +4,7 @@
 #include <xwiimote.h>
 #include <libudev.h>
 
-#define WIIMOTEGLUE_VERSION "1.0.wip"
+#define WIIMOTEGLUE_VERSION "1.01.wip"
 /*Let's not lie to ourselves here...
  *this code is a work in progress
  *and will change a lot. There isn't
@@ -32,28 +32,7 @@
 #define NUM_SLOTS 4
 
 
-struct wii_remote;
-struct wii_u_pro;
-struct wii_balance;
-
-struct wii_input_sources {
-  struct wii_remote *remote;
-  struct wii_u_pro *pro;
-  struct wii_balance *balance;
-};
-
-struct virtual_controller {
-  int uinput_fd;
-  int keyboardmouse_fd;
-  int gamepad_fd;
-  int slot_number;
-  int has_wiimote;
-  int has_board;
-  struct wii_input_sources sources;
-};
-
 struct event_map {
-
   int button_map[XWII_KEY_NUM];
   //int waggle_button;
   //int nunchuk_waggle_button;
@@ -68,7 +47,30 @@ struct event_map {
   int IR_map[2][2];
 };
 
+struct mode_mappings {
+  char* name;
+  int reference_count;
+  /*I want devices to be able to share
+   *mappings, but I also want to be
+   *able to free up unused ones.
+   */
+  struct event_map mode_no_ext;
+  struct event_map mode_nunchuk;
+  struct event_map mode_classic;
+};
 
+
+
+struct virtual_controller {
+  int uinput_fd;
+  int keyboardmouse_fd;
+  int gamepad_fd;
+  int slot_number;
+  int has_wiimote;
+  int has_board;
+  enum SLOT_TYPE {SLOT_KEYBOARDMOUSE,SLOT_GAMEPAD} type;
+  struct mode_mappings* slot_specific_mappings;
+};
 
 
 /*Mmm... Linked lists.
@@ -86,6 +88,7 @@ struct wii_device_list {
   struct virtual_controller *slot;
   int ifaces;
   struct event_map *map;
+  struct mode_mappings* dev_specific_mappings;
 
   char* id;
   char* bluetooth_addr;
@@ -93,6 +96,7 @@ struct wii_device_list {
   enum DEVICE_TYPE { REMOTE, BALANCE, PRO} type;
 
   int fd;
+
 };
 
 struct wiimoteglue_state {
@@ -106,10 +110,9 @@ struct wiimoteglue_state {
   int load_lines; /*how many lines of loaded files have we processed? */
   int dev_count; /*simple counter for making identifiers*/
   int ignore_pro; /*ignore Wii U Pro Controllers?*/
-  struct event_map mode_no_ext;
-  struct event_map mode_nunchuk;
-  struct event_map mode_classic;
-  struct event_map keyboard_mouse; /* unused at the moment */
+
+
+  struct mode_mappings general_maps;
 };
 
 int * KEEP_LOOPING; //Sprinkle around some checks to let signals interrupt.
@@ -169,6 +172,11 @@ int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist);
 
 int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device_list *dev);
 
+struct virtual_controller* find_open_slot(struct wiimoteglue_state *state, int dev_type);
+
+int wiimoteglue_compute_all_device_maps(struct wiimoteglue_state* state, struct wii_device_list *devlist);
+int compute_device_map(struct wiimoteglue_state* state, struct wii_device_list *devlist);
+struct mode_mappings* lookup_mappings(struct wiimoteglue_state* state, char* map_name);
 
 int * get_input_key(char *key_name, int button_map[]);
 int * get_input_axis(char *axis_name, struct event_map *map);

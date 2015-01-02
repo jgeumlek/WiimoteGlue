@@ -78,10 +78,10 @@ char * getwholeline(int file) {
   return buffer;
 }
 
-#define NUM_WORDS 5
+#define NUM_WORDS 6
 void process_command(struct wiimoteglue_state *state, char *args[]);
-void update_mapping(struct wiimoteglue_state *state, char *mode, char *in, char *out, char *opt);
-void toggle_setting(struct wiimoteglue_state *state, int active, char *mode, char *setting, char *opt);
+void update_mapping(struct wiimoteglue_state *state, struct mode_mappings* maps, char *mode, char *in, char *out, char *opt);
+void toggle_setting(struct wiimoteglue_state *state, struct mode_mappings* maps, int active, char *mode, char *setting, char *opt);
 int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting);
 int list_devices(struct wii_device_list *devlist, char *option);
 struct wii_device_list* lookup_device(struct wii_device_list *devlist, char *name);
@@ -162,7 +162,7 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
     printf("\t\"wiimote\" - used when the wiimote has no extension. (Motion Plus is ignored.)\n");
     printf("\t\"nunchuk\" - used when a nunchuk is present.\n");
     printf("\t\"classic\" - used when a classic controller is present, or for a Wii U pro controller\n");
-
+    printf("\t\"all\" - applies to all three modes.\n");
     return;
   }
   if (strcmp(args[0],"events") == 0) {
@@ -214,15 +214,47 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
     return;
   }
   if (strcmp(args[0],"map") == 0) {
-    update_mapping(state,args[1],args[2],args[3],args[4]);
+    struct mode_mappings* maps;
+    if (mode_name_check(args[1]) >= 0) {
+      /*The first argument was a mode name.
+       *We assume the gamepad mapping by default.
+       */
+      maps = lookup_mappings(state,"gamepad");
+      update_mapping(state,maps,args[1],args[2],args[3],args[4]);
+    } else {
+      maps = lookup_mappings(state,args[1]);
+      update_mapping(state,maps,args[2],args[3],args[4],args[5]);
+    }
     return;
   }
   if (strcmp(args[0],"enable") == 0) {
-    toggle_setting(state,1,args[1],args[2],args[3]);
+    struct mode_mappings* maps;
+    if (mode_name_check(args[1]) >= 0) {
+      /*The first argument was a mode name.
+       *We assume the gamepad mapping by default.
+       */
+      maps = lookup_mappings(state,"gamepad");
+      toggle_setting(state,maps,1,args[1],args[2],args[3]);
+
+    } else {
+      maps = lookup_mappings(state,args[1]);
+      toggle_setting(state,maps,1,args[2],args[3],args[4]);
+    }
     return;
   }
   if (strcmp(args[0],"disable") == 0) {
-    toggle_setting(state,0,args[1],args[2],args[3]);
+    struct mode_mappings* maps;
+    if (mode_name_check(args[1]) >= 0) {
+      /*The first argument was a mode name.
+       *We assume the gamepad mapping by default.
+       */
+      maps = lookup_mappings(state,"gamepad");
+      toggle_setting(state,maps,0,args[1],args[2],args[3]);
+
+    } else {
+      maps = lookup_mappings(state,args[1]);
+      toggle_setting(state,maps,0,args[2],args[3],args[4]);
+    }
     return;
   }
   if (strcmp(args[0],"load") == 0) {
@@ -231,10 +263,14 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
   }
   if (strcmp(args[0],"slot") == 0) {
     change_slot(state,args[1],args[2]);
+    /*Currently no way to lookup devices assigned
+     *to a slot, other than iterating over the list.*/
+    wiimoteglue_compute_all_device_maps(state,&state->devlist);
     return;
   }
   if (strcmp(args[0],"assign") == 0) {
      assign_device(state,args[1],args[2]);
+     compute_device_map(state,&state->devlist);
      return;
   }
   if (strcmp(args[0],"list") == 0) {
@@ -246,21 +282,29 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
   printf("Command not recognized.\n");
 }
 
-void update_mapping(struct wiimoteglue_state *state, char *mode, char *in, char *out, char *opt) {
+void update_mapping(struct wiimoteglue_state *state, struct mode_mappings* maps, char *mode, char *in, char *out, char *opt) {
   struct event_map *mapping = NULL;
 
-  if (mode == NULL || in == NULL || out == NULL) {
+
+  if (maps == NULL || mode == NULL || in == NULL || out == NULL) {
     printf("Invalid command format.\n");
-    printf("usage: map <mode> <wii input> <gamepad output> [invert]\n");
+    printf("usage: map [gamepad|keyboardmouse] <mode> <wii input> <gamepad output> [invert]\n");
+    printf("If the gamepad/keyboardmouse specifier is omitted, gamepad is assumed.\n");
     return;
   }
 
   if (strcmp(mode,"wiimote") == 0) {
-    mapping = &state->mode_no_ext;
+    mapping = &maps->mode_no_ext;
   } else if (strcmp(mode,"nunchuk") == 0) {
-    mapping = &state->mode_nunchuk;
+    mapping = &maps->mode_nunchuk;
   } else if (strcmp(mode,"classic") == 0) {
-    mapping = &state->mode_classic;
+    mapping = &maps->mode_classic;
+  } else if (strcmp(mode,"all") == 0) {
+    /*This is rather hack-ish. oh well.*/
+    update_mapping(state,maps,"wiimote",in,out,opt);
+    update_mapping(state,maps,"nunchuk",in,out,opt);
+    update_mapping(state,maps,"classic",in,out,opt);
+    return;
   }
 
   if (mapping == NULL) {
@@ -301,27 +345,38 @@ void update_mapping(struct wiimoteglue_state *state, char *mode, char *in, char 
 
 
   printf("Input event \"%s\" not recognized. See \"events\" for valid values.\n",in);
-  printf("usage: map <mode> <wii input> <gamepad output> [invert]\n");
+  printf("usage: map [gamepad|keyboardmouse] <mode> <wii input> <gamepad output> [invert]\n");
   return;
 
 
 }
 
-void toggle_setting(struct wiimoteglue_state *state, int active, char *mode, char *setting, char *opt) {
+void toggle_setting(struct wiimoteglue_state *state, struct mode_mappings* maps, int active, char *mode, char *setting, char *opt) {
   struct event_map *mapping = NULL;
 
-  if (mode == NULL || setting == NULL) {
+  if (maps == NULL || mode == NULL || setting == NULL) {
     printf("Invalid command format.\n");
-    printf("usage: <enable|disable> <mode> <feature> [option]\n");
+    printf("usage: <enable|disable> [gamepad|keyboardmouse] <mode> <feature> [option]\n");
     return;
   }
 
   if (strcmp(mode,"wiimote") == 0) {
-    mapping = &state->mode_no_ext;
+    mapping = &maps->mode_no_ext;
   } else if (strcmp(mode,"nunchuk") == 0) {
-    mapping = &state->mode_nunchuk;
+    mapping = &maps->mode_nunchuk;
   } else if (strcmp(mode,"classic") == 0) {
-    mapping = &state->mode_classic;
+    mapping = &maps->mode_classic;
+  } else if (strcmp(mode,"all") == 0) {
+    /* also hackish*/
+    toggle_setting(state,maps,active,"wiimote",setting,opt);
+    toggle_setting(state,maps,active,"nunchuk",setting,opt);
+    toggle_setting(state,maps,active,"classic",setting,opt);
+    return;
+  }
+
+  if (mapping == NULL) {
+    printf("Controller mode \"%s\" not recognized.\n(Valid modes are \"wiimote\",\"nunchuk\", and \"classic\")\n",mode);
+    return;
   }
 
   if (strcmp(setting, "accel") == 0) {
@@ -344,7 +399,7 @@ void toggle_setting(struct wiimoteglue_state *state, int active, char *mode, cha
   }
 
   printf("Feature \"%s\" not recognized.\n",setting);
-  printf("usage: <enable|disable> <mode> <feature> [option]\n");
+  printf("usage: <enable|disable>  [gamepad|keyboardmouse] <mode> <feature> [option]\n");
 }
 
 
@@ -380,6 +435,7 @@ int wiimoteglue_load_command_file(struct wiimoteglue_state *state, char *filenam
 int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting) {
   if (slotname == NULL || setting == NULL) {
     printf("usage: slot <slotnumber> <gamepad|keyboardmouse>\n");
+    return -1;
   }
 
   int slotnumber = slotname[0] - '0'; /*HACK: single-digit atoi*/
@@ -387,17 +443,20 @@ int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting) 
 
   if (slotnumber < 1 || slotnumber > NUM_SLOTS) {
     printf("\'%s\' is not a valid slot number.\n",slotname);
+    return -1;
   }
+
+  struct virtual_controller* slot = &state->slots[slotnumber];
 
   if (strcmp(setting, "gamepad") == 0) {
     printf("Setting slot %d to be a virtual gamepad.\n",slotnumber);
-    state->slots[slotnumber].uinput_fd = state->slots[slotnumber].gamepad_fd;
+    change_slot_type(state,slot,SLOT_GAMEPAD);
     return 0;
   }
 
   if (strcmp(setting, "keyboardmouse") == 0) {
     printf("Setting slot %d to be a virtual keyboard/mouse combo.\n",slotnumber);
-    state->slots[slotnumber].uinput_fd = state->virtual_keyboardmouse_fd;
+    change_slot_type(state,slot,SLOT_KEYBOARDMOUSE);
     return 0;
   }
 
@@ -437,27 +496,9 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
     return -1;
   }
 
-  if (device->type == REMOTE || device->type == PRO) {
-    if (device->slot != NULL) {
-    device->slot->has_wiimote--;
-    }
-    if (slot != NULL) {
-      slot->has_wiimote++;
-      if (slot->has_wiimote > 1)
-	printf("Mutiple controllers assigned to a slot!\nSafety not guaranteed.\n");
-    }
-  }
-  if (device->type == BALANCE) {
-    if (device->slot != NULL) {
-    device->slot->has_board--;
-    }
-    if (slot != NULL) {
-      slot->has_board++;
-      if (slot->has_board > 1)
-	printf("Mutiple boards assigned to a slot!\nSafety not guaranteed.\n");
-    }
-  }
-  device->slot = slot;
+  /*Both of these functions handle NULL slots correctly*/
+  remove_device_from_slot(device);
+  add_device_to_slot(state,device,slot);
 
   return 0;
 

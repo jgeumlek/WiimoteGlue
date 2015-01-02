@@ -39,7 +39,7 @@ struct commandline_options {
 } options;
 
 
-int init_mapping(struct wiimoteglue_state *state);
+int init_mappings(struct mode_mappings *maps, char* name);
 int handle_arguments(struct commandline_options *options, int argc, char *argv[]);
 
 int main(int argc, char *argv[]) {
@@ -84,7 +84,12 @@ int main(int argc, char *argv[]) {
 
   state.virtual_keyboardmouse_fd = state.slots[0].uinput_fd;
 
-  init_mapping(&state);
+  init_gamepad_mappings(&state.general_maps,"gamepad");
+
+  struct mode_mappings keymouse;
+  init_keyboardmouse_mappings(&keymouse,"keyboardmouse");
+
+  set_slot_specific_mappings(&state.slots[0],&keymouse);
 
 
 
@@ -167,8 +172,9 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      printf("Recognized Arguments:\n");
      printf("  -h, --help\t\t\tShow help text\n");
      printf("  -v, --version\t\t\tShow version string\n");
+     printf("  -d, --dir <directory>\t\tSet the directory for command files\n");
      printf("  -l, --load-file <file>\tLoad the file at start-up\n");
-     printf("      --ignore-pro\tIgnore Wii U Pro controllers\n");
+     printf("      --ignore-pro\t\tIgnore Wii U Pro controllers\n");
      return 1;
    }
    if (strcmp("--version",argv[0]) == 0 || strcmp("-v",argv[0]) == 0) {
@@ -181,6 +187,20 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
        return -1;
      }
      options->file_to_load = argv[1];
+     argc--;
+     argv++;
+   } if (strcmp("--dir",argv[0]) == 0 || strcmp("-d",argv[0]) == 0) {
+     if (argc < 2) {
+       printf("Argument \"%s\" requires a directory.\n",argv[0]);
+       return -1;
+     }
+
+     if (chdir(argv[1]) < 0) {
+       printf("Could not switch to directory \"%s\"\n",argv[1]);
+       perror("chdir");
+       return -1;
+     }
+
      argc--;
      argv++;
    } else if (strcmp("--ignore-pro",argv[0]) == 0) {
@@ -196,207 +216,5 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
  return 0;
 }
 
-int init_mapping(struct wiimoteglue_state *state) {
 
-
-  /* Default wiimote only mapping.
-   * Designed for playing simple games, with the wiimote
-   * held horizontally. (DPAD on the left.)
-   */
-  int *button_map = state->mode_no_ext.button_map;
-  struct event_map *map = &state->mode_no_ext;
-  memset(map, 0, sizeof(state->mode_no_ext));
-  button_map[XWII_KEY_LEFT] = BTN_DPAD_DOWN;
-  button_map[XWII_KEY_RIGHT] = BTN_DPAD_UP;
-  button_map[XWII_KEY_UP] = BTN_DPAD_LEFT;
-  button_map[XWII_KEY_DOWN] = BTN_DPAD_RIGHT;
-  button_map[XWII_KEY_A] = BTN_NORTH;
-  button_map[XWII_KEY_B] = BTN_WEST;
-  button_map[XWII_KEY_PLUS] = BTN_START;
-  button_map[XWII_KEY_MINUS] = BTN_SELECT;
-  button_map[XWII_KEY_HOME] = BTN_MODE;
-  button_map[XWII_KEY_ONE] = BTN_SOUTH;
-  button_map[XWII_KEY_TWO] = BTN_EAST;
-  button_map[XWII_KEY_X] = 0;
-  button_map[XWII_KEY_Y] = 0;
-  button_map[XWII_KEY_TL] = 0;
-  button_map[XWII_KEY_TR] = 0;
-  button_map[XWII_KEY_ZL] = 0;
-  button_map[XWII_KEY_ZR] = 0;
-  button_map[XWII_KEY_THUMBL] = 0;
-  button_map[XWII_KEY_THUMBR] = 0;
-  button_map[XWII_KEY_C] = 0;
-  button_map[XWII_KEY_Z] = 0;
-
-
-  int no_ext_accel_map[6][2] = {
-    {ABS_Y, -TILT_SCALE}, /*accelx*/
-    {ABS_X, -TILT_SCALE}, /*accely*/
-    {NO_MAP, TILT_SCALE},/*accelz*/
-    {NO_MAP, TILT_SCALE},/*n_accelx*/
-    {NO_MAP, TILT_SCALE},/*n_accely*/
-    {NO_MAP, TILT_SCALE} /*n_accelz*/
-  };
-  memcpy(map->accel_map,no_ext_accel_map,sizeof(no_ext_accel_map));
-
-  map->accel_active = 0;
-
-  int no_ext_stick_map[6][2] = {
-    {NO_MAP, CLASSIC_SCALE},/*left_x*/
-    {NO_MAP, -CLASSIC_SCALE},/*left_y*/
-    {NO_MAP, CLASSIC_SCALE},/*right_x*/
-    {NO_MAP, -CLASSIC_SCALE},/*right_y*/
-    {NO_MAP, NUNCHUK_SCALE},/*n_x*/
-    {NO_MAP, -NUNCHUK_SCALE},/*n_y*/
-  };
-  memcpy(map->stick_map, no_ext_stick_map, sizeof(no_ext_stick_map));
-
-  int no_ext_balance_map[6][2] = {
-    {NO_MAP, ABS_LIMIT/600},/*bal_fl*/
-    {NO_MAP, ABS_LIMIT/600},/*bal_fr*/
-    {NO_MAP, ABS_LIMIT/600},/*bal_bl*/
-    {NO_MAP, ABS_LIMIT/600},/*bal_br*/
-    {ABS_X, ABS_LIMIT},/*bal_x*/
-    {ABS_Y, ABS_LIMIT},/*bal_y*/
-  };
-  memcpy(map->balance_map, no_ext_balance_map, sizeof(no_ext_balance_map));
-
-  int no_ext_IR_map[2][2] = {
-    {ABS_RX, ABS_LIMIT/400},/*ir_x*/
-    {ABS_RY, ABS_LIMIT/300},/*ir_y*/
-  };
-  memcpy(map->IR_map, no_ext_IR_map, sizeof(no_ext_IR_map));
-
-  /*Default mapping with nunchuk.
-   *No acceleration, just buttons.
-   *
-   *
-   */
-  button_map = state->mode_nunchuk.button_map;
-  map = &state->mode_nunchuk;
-  memset(&state->mode_nunchuk, 0, sizeof(state->mode_nunchuk));
-  button_map[XWII_KEY_LEFT] = BTN_DPAD_LEFT;
-  button_map[XWII_KEY_RIGHT] = BTN_DPAD_RIGHT;
-  button_map[XWII_KEY_UP] = BTN_DPAD_UP;
-  button_map[XWII_KEY_DOWN] = BTN_DPAD_DOWN;
-  button_map[XWII_KEY_A] = BTN_SOUTH;
-  button_map[XWII_KEY_B] = BTN_TR2;
-  button_map[XWII_KEY_PLUS] = BTN_START;
-  button_map[XWII_KEY_MINUS] = BTN_SELECT;
-  button_map[XWII_KEY_HOME] = BTN_MODE;
-  button_map[XWII_KEY_ONE] = BTN_EAST;
-  button_map[XWII_KEY_TWO] = BTN_TR;
-  button_map[XWII_KEY_X] = 0;
-  button_map[XWII_KEY_Y] = 0;
-  button_map[XWII_KEY_TL] = 0;
-  button_map[XWII_KEY_TR] = 0;
-  button_map[XWII_KEY_ZL] = 0;
-  button_map[XWII_KEY_ZR] = 0;
-  button_map[XWII_KEY_THUMBL] = 0;
-  button_map[XWII_KEY_THUMBR] = 0;
-  button_map[XWII_KEY_C] = BTN_TL;
-  button_map[XWII_KEY_Z] = BTN_TL2;
-
-  int nunchuk_accel_map[6][2] = {
-    {ABS_RX, TILT_SCALE}, /*accelx*/
-    {ABS_RY, TILT_SCALE}, /*accely*/
-    {NO_MAP, TILT_SCALE},/*accelz*/
-    {NO_MAP, TILT_SCALE},/*n_accelx*/
-    {NO_MAP, TILT_SCALE},/*n_accely*/
-    {NO_MAP, TILT_SCALE} /*n_accelz*/
-  };
-  memcpy(map->accel_map,nunchuk_accel_map,sizeof(nunchuk_accel_map));
-
-  map->accel_active = 0;
-
-  int nunchuk_stick_map[6][2] = {
-    {NO_MAP, CLASSIC_SCALE},/*left_x*/
-    {NO_MAP, -CLASSIC_SCALE},/*left_y*/
-    {NO_MAP, CLASSIC_SCALE},/*right_x*/
-    {NO_MAP, -CLASSIC_SCALE},/*right_y*/
-    {ABS_X, NUNCHUK_SCALE},/*n_x*/
-    {ABS_Y, -NUNCHUK_SCALE},/*n_y*/
-  };
-  memcpy(map->stick_map, nunchuk_stick_map, sizeof(nunchuk_stick_map));
-
-  int nunchuk_balance_map[6][2] = {
-    {NO_MAP, ABS_LIMIT/600},/*bal_fl*/
-    {NO_MAP, ABS_LIMIT/600},/*bal_fr*/
-    {NO_MAP, ABS_LIMIT/600},/*bal_bl*/
-    {NO_MAP, ABS_LIMIT/600},/*bal_br*/
-    {ABS_X, ABS_LIMIT},/*bal_x*/
-    {ABS_Y, ABS_LIMIT},/*bal_y*/
-  };
-  memcpy(map->balance_map, nunchuk_balance_map, sizeof(nunchuk_balance_map));
-
-  int nunchuk_IR_map[2][2] = {
-    {ABS_RX, ABS_LIMIT/400},/*ir_x*/
-    {ABS_RY, ABS_LIMIT/300},/*ir_y*/
-  };
-  memcpy(map->IR_map, nunchuk_IR_map, sizeof(nunchuk_IR_map));
-
-  button_map = state->mode_classic.button_map;
-  map = &state->mode_classic;
-  memset(&state->mode_classic, 0, sizeof(state->mode_classic));
-  button_map[XWII_KEY_LEFT] = BTN_DPAD_LEFT;
-  button_map[XWII_KEY_RIGHT] = BTN_DPAD_RIGHT;
-  button_map[XWII_KEY_UP] = BTN_DPAD_UP;
-  button_map[XWII_KEY_DOWN] = BTN_DPAD_DOWN;
-  button_map[XWII_KEY_A] = BTN_EAST;
-  button_map[XWII_KEY_B] = BTN_SOUTH;
-  button_map[XWII_KEY_PLUS] = BTN_START;
-  button_map[XWII_KEY_MINUS] = BTN_SELECT;
-  button_map[XWII_KEY_HOME] = BTN_MODE;
-  button_map[XWII_KEY_ONE] = 0;
-  button_map[XWII_KEY_TWO] = 0;
-  button_map[XWII_KEY_X] = BTN_NORTH;
-  button_map[XWII_KEY_Y] = BTN_WEST;
-  button_map[XWII_KEY_TL] = BTN_TL;
-  button_map[XWII_KEY_TR] = BTN_TR;
-  button_map[XWII_KEY_ZL] = BTN_TL2;
-  button_map[XWII_KEY_ZR] = BTN_TR2;
-  button_map[XWII_KEY_THUMBL] = BTN_THUMBL;
-  button_map[XWII_KEY_THUMBR] = BTN_THUMBR;
-  button_map[XWII_KEY_C] = 0;
-  button_map[XWII_KEY_Z] = 0;
-
-  int classic_accel_map[6][2] = {
-    {ABS_RX, TILT_SCALE}, /*accelx*/
-    {ABS_RY, TILT_SCALE}, /*accely*/
-    {NO_MAP, TILT_SCALE},/*accelz*/
-    {ABS_X, TILT_SCALE},/*n_accelx*/
-    {ABS_Y, TILT_SCALE},/*n_accely*/
-    {NO_MAP, TILT_SCALE} /*n_accelz*/
-  };
-  memcpy(map->accel_map,classic_accel_map,sizeof(classic_accel_map));
-
-  int classic_stick_map[6][2] = {
-    {ABS_X, CLASSIC_SCALE},/*left_x*/
-    {ABS_Y, -CLASSIC_SCALE},/*left_y*/
-    {ABS_RX, CLASSIC_SCALE},/*right_x*/
-    {ABS_RY, -CLASSIC_SCALE},/*right_y*/
-    {NO_MAP, NUNCHUK_SCALE},/*n_x*/
-    {NO_MAP, -NUNCHUK_SCALE},/*n_y*/
-  };
-  memcpy(map->stick_map, classic_stick_map, sizeof(classic_stick_map));
-
-  int classic_balance_map[6][2] = {
-    {NO_MAP, ABS_LIMIT/600},/*bal_fl*/
-    {NO_MAP, ABS_LIMIT/600},/*bal_fr*/
-    {NO_MAP, ABS_LIMIT/600},/*bal_bl*/
-    {NO_MAP, ABS_LIMIT/600},/*bal_br*/
-    {ABS_X, ABS_LIMIT},/*bal_x*/
-    {ABS_Y, ABS_LIMIT},/*bal_y*/
-  };
-  memcpy(map->balance_map, classic_balance_map, sizeof(classic_balance_map));
-
-  int classic_IR_map[2][2] = {
-    {ABS_RX, ABS_LIMIT/400},/*ir_x*/
-    {ABS_RY, ABS_LIMIT/300},/*ir_y*/
-  };
-  memcpy(map->IR_map, classic_IR_map, sizeof(classic_IR_map));
-
-  return 0;
-
-}
 

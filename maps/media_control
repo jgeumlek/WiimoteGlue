@@ -2,57 +2,64 @@
 #to set a wiimote to control one's media
 
 #first, lets change player 1 to simulate a keyboard
-#One can also do "assign <devname> keyboard mouse"
+#One can also do "assign <devname> keyboardmouse"
+
 slot 1 keyboardmouse
+
 #Keyboard and mouse events only work if one
 #these two cases are true:
 #  -The device's slot is set to keyboardmouse mode
 #  -The device is directly assigned to the keyboardmouse slot
 
-#These buttons are sensible in all the mappings:
-map wiimote plus key_volumeup
-map wiimote minus key_volumedown
-map nunchuk plus key_volumeup
-map nunchuk minus key_volumedown
-map classic plus key_volumeup
-map classic minus key_volumedown
+#These buttons are sensible in all the modes:
+map keyboardmouse all plus key_volumeup
+map keyboardmouse all minus key_volumedown
+
+#Note that we must specify the name of the mapping
+#"keyboardmouse", otherwise it will default to
+#the "gamepad" mapping.
+
 
 #lets hold the wiimote vertically, like a remote.
 
-map wiimote a key_playpause
-map wiimote b key_mute
-map wiimote left key_previoussong
-map wiimote right key_nextsong
-map wiimote home key_stop
-map wiimote 1 key_shuffle
-map wiimote up key_brightnessup
-map wiimote down key_brightnessdown
+map keyboardmouse wiimote a key_playpause
+map keyboardmouse wiimote b key_mute
+map keyboardmouse wiimote left key_previoussong
+map keyboardmouse wiimote right key_nextsong
+map keyboardmouse wiimote home key_stop
+map keyboardmouse wiimote 1 key_shuffle
+map keyboardmouse wiimote up key_brightnessup
+map keyboardmouse wiimote down key_brightnessdown
 
 #add a nunchuk, and we'll add some mouse controls as well.
-enable nunchuk ir
-map nunchuk ir_x mouse_x
-map nunchuk ir_y mouse_y
-map nunchuk a left_click
-map nunchuk b right_click
 
-map nunchuk c key_playpause
-map nunchuk z key_mute
-map nunchuk left key_previoussong
-map nunchuk right key_nextsong
-map nunchuk home key_stop
-map nunchuk 1 key_shuffle
-map nunchuk up key_brightnessup
-map nunchuk down key_brightnessdown
+enable keyboardmouse nunchuk ir
+map keyboardmouse nunchuk ir_x mouse_x
+map keyboardmouse nunchuk ir_y mouse_y
+map keyboardmouse nunchuk a left_click
+map keyboardmouse nunchuk b right_click
+
+map keyboardmouse nunchuk c key_playpause
+map keyboardmouse nunchuk z key_mute
+map keyboardmouse nunchuk left key_previoussong
+map keyboardmouse nunchuk right key_nextsong
+map keyboardmouse nunchuk home key_stop
+map keyboardmouse nunchuk 1 key_shuffle
+map keyboardmouse nunchuk up key_brightnessup
+map keyboardmouse nunchuk down key_brightnessdown
 
 #What should we do with a classic controller?
-map classic a key_playpause
-map classic home key_stop
-map classic b key_mute
-map classic x key_shuffle
+#This file is more of a demo than an
+#actually useful setup.
 
-map classic zr key_nextsong
-map classic zl key_previoussong
-map classic l left_click
-map classic r right_click
-map classic left_x mouse_x
-map classic left_y mouse_y
+map keyboardmouse classic a key_playpause
+map keyboardmouse classic home key_stop
+map keyboardmouse classic b key_mute
+map keyboardmouse classic x key_shuffle
+
+map keyboardmouse classic zr key_nextsong
+map keyboardmouse classic zl key_previoussong
+map keyboardmouse classic l left_click
+map keyboardmouse classic r right_click
+map keyboardmouse classic left_x mouse_x
+map keyboardmouse classic left_y mouse_y
