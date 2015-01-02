@@ -24,4 +24,4 @@ map wiimote accely left_x invert
 
 #The IR sensor is just going to be pointing at a hand.
 #No need to enable it.
-disable wiimote IR
+disable wiimote ir

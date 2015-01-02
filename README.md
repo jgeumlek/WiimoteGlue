@@ -3,25 +3,36 @@
 
 (Tested only on Arch Linux, 64-bit)
 
+##Building
+
     make
 
-to build it, and
+If you get undefined KEY_* errors, try
+
+    make keycodefix
+    make
+
+This will generate new key_codes.c that should use only KEY_* constants that you have defined.
+
+It requires udev, uinput, and xwiimote.
+
+https://github.com/dvdhrm/xwiimote
+
+(also available in the AUR https://aur.archlinux.org/packages/xwiimote/ )
+
+##Running
 
     ./wiimoteglue
 
-to run it.
+WiimoteGlue will start up and wait for Wii remotes to show up. WiimoteGlue will read commands to from its standard input.
 
     ./wiimoteglue --help
 
 to see the (very few) command line arguments.
 
-It requires udev, uinput, and xwiimote. The Makefile is very naive; it is just a single gcc invocation. Pretty much build it however you want, just be sure to link the necessary libraries.
-
-https://github.com/dvdhrm/xwiimote (also available in the AUR https://aur.archlinux.org/packages/xwiimote/ )
 
 You'll need certain file permissions on the uinput and wiimote event devices. Depending on your distro, you might need to edit uinput.c to use the appropriate location for uinput on your system. WiimoteGlue assumes it is at /dev/uinput
 
-(If you have undefined KEY_* problems when compiling, check out the script in the build_util folder)
 
 
 ##Motivation

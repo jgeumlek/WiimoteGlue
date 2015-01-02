@@ -8,8 +8,6 @@ FILE="/usr/include/linux/input.h"
 if [ "$#" -ne 1 ]; then
   if [ -e "$FILE" ]; then
     echo "Found /usr/include/linux/input.h"
-    echo "If this is wrong, specify the correct"
-    echo "path as the first argument to this script."
     echo ""
 
   else
@@ -132,7 +130,7 @@ int get_output_axis(char *axis_name) {
 }
 CONSTANT_CODE_SUFFIX
 
-echo "File key_codes.c has been generated. Please ensure it is located in the right spot."
+echo "File key_codes.c has been generated." 
 
 
 
