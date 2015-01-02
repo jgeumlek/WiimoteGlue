@@ -11,15 +11,30 @@
  *Change the location /dev/uinput below if you need to.
  */
 
-#define UINPUT_FILE "/dev/uinput"
+char* try_to_find_uinput() {
+  static char* paths[] = {
+    "/dev/uinput",
+    "/dev/input/uinput",
+    "/dev/misc/uinput"
+  };
+  const int num_paths = 3;
+  int i;
 
-int open_uinput_fd();
+  for (i = 0; i < num_paths; i++) {
+    if (access(paths[i],F_OK) == 0) {
+      return paths[i];
+    }
+  }
+
+  return NULL;
+
+}
 
 
-int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[]) {
+int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], char* uinput_path) {
   int uinput_fd = 0;
   int i;
-  int keyboardmouse_fd = open_uinput_keyboardmouse_fd();
+  int keyboardmouse_fd = open_uinput_keyboardmouse_fd(uinput_path);
   if (keyboardmouse_fd < 0) {
     return -1;
   }
@@ -33,7 +48,7 @@ int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[]) {
 
 
   for (i = 1; i <= num_slots; i++) {
-    uinput_fd = open_uinput_gamepad_fd();
+    uinput_fd = open_uinput_gamepad_fd(uinput_path);
     if (uinput_fd < 0) {
       return -1;
     }
@@ -64,7 +79,7 @@ int wiimoteglue_uinput_close(int num_slots, struct virtual_controller slots[]) {
 }
 
 
-int open_uinput_gamepad_fd() {
+int open_uinput_gamepad_fd(char* uinput_path) {
   /* as far as I know, you can't change the reported event types
    * after creating the virtual device.
    * So we just create a gamepad with all of them, even if unmapped.
@@ -74,9 +89,8 @@ int open_uinput_gamepad_fd() {
   struct uinput_user_dev uidev;
   int fd;
   int i;
-  //TODO: handle other locations of uinput.
   //TODO: Read from uinput for rumble events?
-  fd = open(UINPUT_FILE, O_WRONLY | O_NONBLOCK);
+  fd = open(uinput_path, O_WRONLY | O_NONBLOCK);
   if (fd < 0) {
     perror("open uinput");
     return -1;
@@ -107,7 +121,7 @@ int open_uinput_gamepad_fd() {
   return fd;
 }
 
-int open_uinput_keyboardmouse_fd() {
+int open_uinput_keyboardmouse_fd(char* uinput_path) {
 
   static int abs[] = { ABS_X, ABS_Y};
   static int key[] = { BTN_LEFT, BTN_MIDDLE, BTN_RIGHT,BTN_TOUCH,BTN_TOOL_PEN};
@@ -118,11 +132,11 @@ int open_uinput_keyboardmouse_fd() {
   struct uinput_user_dev uidev;
   int fd;
   int i;
-  //TODO: handle other locations of uinput.
+
   //TODO: Read from uinput for rumble events?
-  fd = open(UINPUT_FILE, O_WRONLY | O_NONBLOCK);
+  fd = open(uinput_path, O_WRONLY | O_NONBLOCK);
   if (fd < 0) {
-    perror("open uinput");
+    perror("\nopen uinput");
     return -1;
   }
   memset(&uidev, 0, sizeof(uidev));

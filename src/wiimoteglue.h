@@ -154,8 +154,9 @@ enum bal_axis {
   WG_BAL_Y
 };
 
+char* try_to_find_uinput();
 int wiimoteglue_uinput_close(int num_slots, struct virtual_controller slots[]);
-int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[]);
+int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], char* uinput_path);
 
 int wiimoteglue_udev_monitor_init(struct udev **udev, struct udev_monitor **monitor, int *mon_fd);
 int wiimoteglue_udev_handle_event(struct wiimoteglue_state* state);

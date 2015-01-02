@@ -36,6 +36,7 @@ struct commandline_options {
   int ignore_pro;
   char* virt_gamepad_name;
   char* virt_keyboardmouse_name;
+  char* uinput_path;
 } options;
 
 
@@ -66,13 +67,25 @@ int main(int argc, char *argv[]) {
   }
 
 
+  if (options.uinput_path == NULL) {
+    printf("Trying to find uinput... ");
+    options.uinput_path = try_to_find_uinput();
+    if (options.uinput_path == NULL) {
+      printf("not found.\n");
+      printf("Use --uinput-path to specify its location.\n");
+      return -1;
+    } else {
+      printf("%s\n",options.uinput_path);
+    }
+  }
   //Ask how many fake controllers to make... (ASSUME 4 FOR NOW)
   printf("Creating uinput devices (%d gamepads, and a keyboard/mouse combo)...",NUM_SLOTS);
+  fflush(stdout);
   int i;
 
 
 
-  ret = wiimoteglue_uinput_init(NUM_SLOTS, state.slots);
+  ret = wiimoteglue_uinput_init(NUM_SLOTS, state.slots,options.uinput_path);
 
   if (ret) {
     printf("\nError in creating uinput devices, aborting.\nCheck the permissions.\n");
@@ -128,9 +141,13 @@ int main(int argc, char *argv[]) {
   signal(SIGTERM, signal_handler);
   signal(SIGHUP, signal_handler);
   if (options.file_to_load != NULL) {
+    printf("\n");
     wiimoteglue_load_command_file(&state,options.file_to_load);
+    printf("\n");
   }
-  printf("WiimoteGlue is running. Enter \"help\" for available commands.\n>>");
+
+  printf("WiimoteGlue Version %s\n",WIIMOTEGLUE_VERSION);
+  printf("Enter \"help\" for available commands.\n>>");
   fflush(stdout);
   wiimoteglue_epoll_loop(epfd, &state);
 
@@ -174,6 +191,7 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      printf("  -v, --version\t\t\tShow version string\n");
      printf("  -d, --dir <directory>\t\tSet the directory for command files\n");
      printf("  -l, --load-file <file>\tLoad the file at start-up\n");
+     printf("      --uinput-path\t\tSpecify path to uinput\n");
      printf("      --ignore-pro\t\tIgnore Wii U Pro controllers\n");
      return 1;
    }
@@ -189,7 +207,7 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      options->file_to_load = argv[1];
      argc--;
      argv++;
-   } if (strcmp("--dir",argv[0]) == 0 || strcmp("-d",argv[0]) == 0) {
+   } else if (strcmp("--dir",argv[0]) == 0 || strcmp("-d",argv[0]) == 0) {
      if (argc < 2) {
        printf("Argument \"%s\" requires a directory.\n",argv[0]);
        return -1;
@@ -200,6 +218,16 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
        perror("chdir");
        return -1;
      }
+
+     argc--;
+     argv++;
+   } else if (strcmp("--uinput-path",argv[0]) == 0) {
+     if (argc < 2) {
+       printf("Argument \"%s\" requires a path.\n",argv[0]);
+       return -1;
+     }
+
+     options->uinput_path = argv[1];
 
      argc--;
      argv++;
