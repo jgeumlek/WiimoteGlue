@@ -7,7 +7,7 @@ FILE="/usr/include/linux/input.h"
 
 if [ "$#" -ne 1 ]; then
   if [ -e "$FILE" ]; then
-    echo "Assuming /usr/include/linux/input.h"
+    echo "Found /usr/include/linux/input.h"
     echo "If this is wrong, specify the correct"
     echo "path as the first argument to this script."
     echo ""

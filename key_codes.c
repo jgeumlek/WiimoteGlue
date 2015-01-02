@@ -4,6 +4,13 @@
 
 #include "wiimoteglue.h"
 
+/*If you can't compile this file because some KEY_*
+ *constant is undefined, check the build_util/generate_key_codes
+ *script.
+ *
+ *It will make a brand new version of this entire file.
+ */
+
 int * get_input_key(char *key_name, int button_map[]) {
   if (key_name == NULL) return NULL;
   if (strcmp(key_name,"up") == 0) return &button_map[XWII_KEY_UP];

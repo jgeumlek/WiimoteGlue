@@ -125,7 +125,8 @@ int main(int argc, char *argv[]) {
   if (options.file_to_load != NULL) {
     wiimoteglue_load_command_file(&state,options.file_to_load);
   }
-  printf("WiimoteGlue is running. Enter \"help\" for available commands.\n");
+  printf("WiimoteGlue is running. Enter \"help\" for available commands.\n>>");
+  fflush(stdout);
   wiimoteglue_epoll_loop(epfd, &state);
 
 

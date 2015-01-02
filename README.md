@@ -21,6 +21,8 @@ https://github.com/dvdhrm/xwiimote (also available in the AUR https://aur.archli
 
 You'll need certain file permissions on the uinput and wiimote event devices. Depending on your distro, you might need to edit uinput.c to use the appropriate location for uinput on your system. WiimoteGlue assumes it is at /dev/uinput
 
+(If you have undefined KEY_* problems when compiling, check out the script in the build_util folder)
+
 
 ##Motivation
 
@@ -49,7 +51,7 @@ After veering off the track repeatedly, it is time to get serious. You plug in t
 
 After a while, a friend comes by. "Oh hey, it's \<popular kart racing game\>! Can I play? Wait. What's with that funky controller? I don't trust my left and right hands to be separated by a cord, and there's no way that has enough buttons."
 
-Before they turn away, you manage to swap the Nunchuk our for a Wii Classic Controller. Like magic, the controller works as expected. No need to fiddle with control mappings every time an extension changes, and no need to change the game options to use the newly connected Classic Controller. Your friend, eased by the comforting vague familiarity of the Classic Controller, enjoys their race.
+Before they turn away, you manage to swap the Nunchuk out for a Wii Classic Controller. Like magic, the controller works as expected. No need to fiddle with control mappings every time an extension changes, and no need to change the game options to use the newly connected Classic Controller. Your friend, eased by the comforting vague familiarity of the Classic Controller, enjoys their race.
 
 After they leave, you remove the Classic Controller, change a few mappings in WiimoteGlue, connect a Wii Balance Board, and decide to try steering with your feet.
 
@@ -99,24 +101,23 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 
 ##Known Issues
 
-* Keyboard/mouse emulation is in early stages.
 * Though each controller can be in a different mode depending on its extension, there is just one mapping for each mode.
 * Sometimes extensions aren't detected, especially when already inserted when a wiimote connects. Unplugging them and re-inserting generally fixes this.
 * Though the Wii U Pro supports changing the button mappings and axis mappings, it does not allow inverting the axes.
-* Since the Wii U Pro is already detected by SDL, grabbing leads to "duplicate" controllers.
+* Since the Wii U Pro is already detected by SDL, WiimoteGlue leads to "duplicate" controllers.
 * Number of virtual gamepads is hard-coded to 4.
 * Any wiimotes connected before starting WiimoteGlue will be ignored.
-* Currently single-threaded to handle all input events across all controllers. May introduce latency? Most shared data is written only by the command interface; it is only read elsewhere. The real trouble points are adding/deleting entries of the devicelist and keeping track of STDIN commands versus commands from a file.
+* Keyboard/mouse emulation is not perfect.
+* Currently single-threaded, handling all input events across all controllers. May introduce latency?
 * Virtual gamepads don't change their axis sensitivities or deadzones when their input sources change. The deadzone ideal for a thumb stick might not be the ideal for a tilt control.
 * Code is messy as a personal project. Particularly, i18n was not a concern when writing it. Sorry.
 * Uses a udev monitor per wiimote despite xwiimote saying not to do that.
 * Assumes uinput is located at /dev/uinput
-* Doesn't handle permission issues gracefully.
 * Wiimote buttons are still processed when a classic controller is present, despite duplicate buttons. The duplicate button events are mapped the same, and interleaved onto to the synthetic gamepad, but this generally isn't a huge problem.
 * Not really designed to handle multiple instances of WiimoteGlue running, mostly due to them grabbing the same wiimotes.
 * No current way to change directory used for loading command files; it is just the current directory from when WiimoteGlue was run.
-* Only the default classic control mappings technically follow the Linux gamepad standards. The wiimote and wiimote/nunchuk default mappings were chosen to be vaguely useful in most games, rather than following the standard to the letter.
 * Virtual output devices aren't "cleared" when their input sources are removed. If you remap a button while it is held down (or an uncentered axis), the old mapping will be "frozen" to whatever input it had last.
+
 
 
 ##Troubleshooting FAQ-ish Section
@@ -138,7 +139,7 @@ When LED changing is added, you'll also need write access to the LED brightness 
 
     SUBSYSTEM=="leds", ACTION=="add", DRIVERS=="wiimote", RUN+="/bin/sh -c 'chgrp input /sys%p/brightness'", RUN+="/bin/sh -c 'chmod g+w /sys%p/brightness'"
 
-seems to be a working for me, but there is probably a better way to write this udev rule.
+seems to be working for me, but there is probably a better way to write this udev rule.
 
 
 ###North, south, east, west? What are those? My "A" button isn't acting like a "A" button.
@@ -369,7 +370,7 @@ Maybe make it so mapping a button automagically switches that mode to prefer the
 
 At the moment, this functionality doesn't give much advantage over just using the Wii U Pro controller directly. It does let the buttons be remapped, which can be nice for switching around the face buttons.
 
-In the future when WiimoteGlue changes the player LEDs to match slot numbers, grabbing the Pro controllers will be somewhat nice.
+In the future when WiimoteGlue changes the player LEDs to match slot numbers, grabbing the Pro controllers will let them use their LEDs in a meaningful way.
 
 If one desires the balance board combo control schemes, grabbing the Wii U Pro controllers makes them usable for that.
 

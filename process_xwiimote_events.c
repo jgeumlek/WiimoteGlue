@@ -8,44 +8,12 @@
 
 /* This file uses the xwiimote library
  * for interacting with wiimotes.
- * It handles opening and closing interfaces,
- * removing controllers from the device list,
+ * It handles opening and closing interfaces
  * and translating wiimote events to gamepad events.
  *
- * note that udev.c handles adding controllers.
  */
 
-int close_remote(struct wii_device_list *dev) {
-    printf("Controller %s (%s) has been removed.\n",dev->id,dev->bluetooth_addr);
 
-    close(dev->fd);
-    xwii_iface_unref(dev->device);
-    if (dev->slot != NULL) {
-      printf("(It was assigned slot #%d)\n",dev->slot->slot_number);
-      if (dev->type == BALANCE) {
-	dev->slot->has_board--;
-      } else {
-	dev->slot->has_wiimote--;
-      }
-    }
-    if (dev->prev) {
-      dev->prev->next = dev->next;
-    }
-    if (dev->next) {
-      dev->next->prev = dev->prev;
-    }
-
-    if (dev->id != NULL) {
-      free(dev->id);
-    }
-    if (dev->bluetooth_addr != NULL) {
-      free(dev->bluetooth_addr);
-    }
-
-    free(dev);
-
-    return 0;
-}
 
 void handle_key(int uinput_fd, int button_map[], struct xwii_event_key *ev);
 void handle_nunchuk(int uinput_fd, struct event_map *map, struct xwii_event_abs ev[]);
@@ -97,7 +65,7 @@ int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_dev
   int ret = xwii_iface_dispatch(dev->device,&ev,sizeof(ev));
   if (ret < 0 && ret != -EAGAIN) {
     printf("Error reading controller. ");
-    close_remote(dev);
+    close_wii_device(dev);
 
   } else if (ret != -EAGAIN) {
 
@@ -158,7 +126,7 @@ int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_dev
 
       if (xwii_iface_available(dev->device) == 0 || dev->ifaces == 0) {
 	//Controller removed.
-	close_remote(dev);
+	close_wii_device(dev);
       }
       break;
 
@@ -358,4 +326,6 @@ void handle_balance(int uinput_fd, struct event_map *map, struct xwii_event_abs 
   out.value = 0;
   write(uinput_fd, &out, sizeof(out));
 }
+
+
 
