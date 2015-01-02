@@ -30,7 +30,7 @@ struct commandline_options {
   /*Many of these are wishful thinking at the moment*/
   char* file_to_load;
   int number_of_slots;
-  int create_keyboardmouse;
+  int no_keyboardmouse;
   int check_for_existing_wiimotes;
   int monitor_for_new_wiimotes;
   int ignore_pro;
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
   int monitor_fd;
   int epfd;
   int ret;
-
+  options.number_of_slots = -1; /*initialize so we know it has been set*/
   ret = handle_arguments(&options, argc, argv);
   if (ret == 1) {
     return 0; /*arguments just said to print out help or version info.*/
@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
   if (ret < 0) {
     return ret;
   }
+  printf("WiimoteGlue Version %s\n\n",WIIMOTEGLUE_VERSION);
 
   if (options.ignore_pro) {
     printf("Wii U Pro controllers will be ignored.\n");
@@ -78,18 +79,27 @@ int main(int argc, char *argv[]) {
       printf("%s\n",options.uinput_path);
     }
   }
-  //Ask how many fake controllers to make... (ASSUME 4 FOR NOW)
-  printf("Creating uinput devices (%d gamepads, and a keyboard/mouse combo)...",NUM_SLOTS);
+
+
+  state.num_slots = 4;
+  if (options.number_of_slots != -1) {
+    state.num_slots = options.number_of_slots;
+  }
+
+  /*add one for the keyboardmouse spot*/
+  state.slots = calloc((1+state.num_slots),sizeof(struct virtual_controller));
+
+  printf("Creating %d gamepad(s) and a keyboard/mouse...",state.num_slots);
   fflush(stdout);
   int i;
 
 
 
-  ret = wiimoteglue_uinput_init(NUM_SLOTS, state.slots,options.uinput_path);
+  ret = wiimoteglue_uinput_init(state.num_slots, state.slots,options.uinput_path);
 
   if (ret) {
     printf("\nError in creating uinput devices, aborting.\nCheck the permissions.\n");
-    wiimoteglue_uinput_close(NUM_SLOTS,state.slots);
+    wiimoteglue_uinput_close(state.num_slots,state.slots);
     return -1;
   } else {
     printf(" okay.\n");
@@ -146,15 +156,15 @@ int main(int argc, char *argv[]) {
     printf("\n");
   }
 
-  printf("WiimoteGlue Version %s\n",WIIMOTEGLUE_VERSION);
-  printf("Enter \"help\" for available commands.\n>>");
+
+  printf("\nWiimoteGlue is now running and waiting for Wiimotes.\nEnter \"help\" for available commands.\n>>");
   fflush(stdout);
   wiimoteglue_epoll_loop(epfd, &state);
 
 
 
   printf("Shutting down...\n");
-  wiimoteglue_uinput_close(NUM_SLOTS, state.slots);
+  wiimoteglue_uinput_close(state.num_slots, state.slots);
 
 
   struct wii_device_list *list_node = state.devlist.next;
@@ -170,6 +180,8 @@ int main(int argc, char *argv[]) {
     free(list_node);
     list_node = next;
   }
+
+  free(state.slots);
 
   udev_monitor_unref(state.monitor);
   udev_unref(udev);
@@ -191,6 +203,7 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      printf("  -v, --version\t\t\tShow version string\n");
      printf("  -d, --dir <directory>\t\tSet the directory for command files\n");
      printf("  -l, --load-file <file>\tLoad the file at start-up\n");
+     printf("  -n, --num-pads <number>\tNumber of fake gamepad slots to create\n");
      printf("      --uinput-path\t\tSpecify path to uinput\n");
      printf("      --ignore-pro\t\tIgnore Wii U Pro controllers\n");
      return 1;
@@ -228,6 +241,24 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      }
 
      options->uinput_path = argv[1];
+
+     argc--;
+     argv++;
+   } else if (strcmp("--num-pads",argv[0]) == 0 || strcmp("-n",argv[0]) == 0) {
+     if (argc < 2) {
+       printf("Argument \"%s\" requires a number.\n",argv[0]);
+       return -1;
+     }
+
+     int num = argv[1][0] - '0'; /*HACK bad atoi*/
+
+
+     if (num < 0 || num > 9 || argv[1][0] == '\0' || argv[1][1] != '\0') {
+       printf("Number of gamepad slots %d must be in range 0 to 9\n",num);
+       return -1;
+     }
+
+     options->number_of_slots = num;
 
      argc--;
      argv++;

@@ -27,9 +27,7 @@
  */
 #define MAX_LOAD_LINES 500
 
-/* The number of virtual gamepads */
-/* CURRENT CODE ASSUMES  0 <= NUM_SLOTS <= 9 */
-#define NUM_SLOTS 4
+
 
 
 struct event_map {
@@ -101,8 +99,9 @@ struct wii_device_list {
 
 struct wiimoteglue_state {
   struct udev_monitor *monitor;
-  struct virtual_controller slots[NUM_SLOTS+1]; /*TODO: FIX THIS HARDCODED VALUE.*/
-  /*NUM_SLOTS+1 because slot 0 is keyboard/mouse*/
+  struct virtual_controller* slots;
+  int num_slots;
+
   int virtual_keyboardmouse_fd; /*Handy enough to keep around*/
   struct wii_device_list devlist;
   int epfd;

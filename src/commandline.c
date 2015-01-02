@@ -441,7 +441,7 @@ int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting) 
   int slotnumber = slotname[0] - '0'; /*HACK: single-digit atoi*/
 
 
-  if (slotnumber < 1 || slotnumber > NUM_SLOTS) {
+  if (slotnumber < 1 || slotnumber > state->num_slots) {
     printf("\'%s\' is not a valid slot number.\n",slotname);
     return -1;
   }
@@ -479,7 +479,7 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
   }
   struct virtual_controller* slot = NULL;
   int slotnumber = slotname[0] - '0'; /*HACK: single-digit atoi*/
-  if (slotnumber >= 1 && slotnumber <= NUM_SLOTS) {
+  if (slotnumber >= 1 && slotnumber <= state->num_slots) {
     slot = &state->slots[slotnumber];
   }
   if (strcmp(slotname,"keyboardmouse") == 0) {
@@ -489,7 +489,7 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
     printf("\'%s\' was not a valid slot.\n",slotname);
     printf("Valid choices are keyboardmouse, ");
     int i;
-    for (i = 1; i <= NUM_SLOTS; i++) {
+    for (i = 1; i <= state->num_slots; i++) {
       printf("%d, ",i);
     }
     printf("none\n");

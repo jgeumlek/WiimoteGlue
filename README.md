@@ -48,6 +48,7 @@ The Linux kernel driver for wiimotes is pretty handy, but the extension controll
 * Configurable at run-time button mappings to get that ideal control scheme.
 * Also grabs Wii U pro controllers and allows remapping buttons.
 * Dynamic control mappings that change when extensions are inserted or removed.
+* Controller LEDs are changed to match the virtual gamepad slot they are in.
 * Basic processing of accelerometer or infared data.
 * Basic support of the Wii Balance Board in addition to a standard controller. Surf your way through your games!
 * Read in control mappings from files. Set up a file per game, and you can switch between them easily.
@@ -106,10 +107,9 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Improve the control mapping files to be less cumbersome.
 * Way off: add in a GUI or interface for controlling the driver outside of the the driver's STDIN. System tray icon?
 * A means of calibrating the axes?
-* Clean up the command line STDIN interface.
 * A reasonable way to let separate controllers have separate control mappings while not making extra work when the same mapping is wanted on all.
 * Clean and document the code in general.
-* A way to store device aliases based on their unique bluetooth adresses.
+* A way to store device aliases based on their unique bluetooth addresses.
 
 ##Known Issues
 
@@ -117,7 +117,6 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Sometimes extensions aren't detected, especially when already inserted when a wiimote connects. Unplugging them and re-inserting generally fixes this.
 * Though the Wii U Pro supports changing the button mappings and axis mappings, it does not allow inverting the axes.
 * Since the Wii U Pro is already detected by SDL, WiimoteGlue leads to "duplicate" controllers.
-* Number of virtual gamepads is hard-coded to 4.
 * Any wiimotes connected before starting WiimoteGlue will be ignored.
 * Keyboard/mouse emulation is not perfect. Expect changes in the interface.
 * Currently single-threaded, handling all input events across all controllers. May introduce latency?

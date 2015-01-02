@@ -8,7 +8,7 @@
 
 struct virtual_controller* find_open_wiimote_slot(struct wiimoteglue_state *state) {
   int i;
-  for (i = 1; i <= NUM_SLOTS; i++) {
+  for (i = 1; i <= state->num_slots; i++) {
     if (state->slots[i].has_wiimote == 0) {
       return &state->slots[i];
     }
@@ -18,7 +18,7 @@ struct virtual_controller* find_open_wiimote_slot(struct wiimoteglue_state *stat
 
 struct virtual_controller* find_open_board_slot(struct wiimoteglue_state *state) {
   int i;
-  for (i = 1; i <= NUM_SLOTS; i++) {
+  for (i = 1; i <= state->num_slots; i++) {
     if (state->slots[i].has_board == 0) {
       return &state->slots[i];
     }
