@@ -33,20 +33,40 @@ struct virtual_controller* find_open_slot(struct wiimoteglue_state *state, int d
   return find_open_wiimote_slot(state);
 }
 
-int add_device_to_slot(struct wiimoteglue_state* state, struct wii_device_list *dev, struct virtual_controller *slot) {
+int add_device_to_slot(struct wiimoteglue_state* state, struct wii_device *dev, struct virtual_controller *slot) {
   int ret = 0;
-  if (dev == NULL)
+  /*We don't support a device being in two slots at once.*/
+  if (dev == NULL || dev->slot != NULL || dev->slot_list == NULL)
     return -1;
-  dev->slot = slot;
+
   if (slot == NULL) {
-    ret += xwii_iface_set_led(dev->device,XWII_LED(1),0);
-    ret += xwii_iface_set_led(dev->device,XWII_LED(2),1);
-    ret += xwii_iface_set_led(dev->device,XWII_LED(3),0);
-    ret += xwii_iface_set_led(dev->device,XWII_LED(4),1);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(1),0);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(2),1);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(3),0);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(4),1);
     if (ret < 0)
       printf("There were errors on setting the LEDs. Permissions?\n");
+
     return 0; /*This is actually okay!*/
   }
+
+
+
+
+
+  dev->slot_list->next = slot->dev_list.next;
+  dev->slot_list->prev = slot->dev_list.prev;
+
+  if (slot->dev_list.next != NULL) {
+    slot->dev_list.next->prev = dev->slot_list;
+  }
+
+  slot->dev_list.next = dev->slot_list;
+
+  dev->slot = slot;
+
+
+
   if (dev->type == BALANCE) {
     slot->has_board++;
   } else {
@@ -60,23 +80,23 @@ int add_device_to_slot(struct wiimoteglue_state* state, struct wii_device_list *
 
   if (num <= 0) {
     /*Keyboard/mouse slot. Let's just set a distinctive pattern.*/
-    ret += xwii_iface_set_led(dev->device,XWII_LED(1),1);
-    ret += xwii_iface_set_led(dev->device,XWII_LED(2),0);
-    ret += xwii_iface_set_led(dev->device,XWII_LED(3),1);
-    ret += xwii_iface_set_led(dev->device,XWII_LED(4),0);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(1),1);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(2),0);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(3),1);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(4),0);
 
   } else if (num > 4) {
     /*Future work: add some reasonable patterns here for higher nums?*/
-    ret += xwii_iface_set_led(dev->device,XWII_LED(1),1);
-    ret += xwii_iface_set_led(dev->device,XWII_LED(2),1);
-    ret += xwii_iface_set_led(dev->device,XWII_LED(3),1);
-    ret += xwii_iface_set_led(dev->device,XWII_LED(4),1);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(1),1);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(2),1);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(3),1);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(4),1);
   } else {
     int i;
-    ret += xwii_iface_set_led(dev->device,XWII_LED(num),1);
+    ret += xwii_iface_set_led(dev->xwii,XWII_LED(num),1);
     for (i = 1; i <= 4; i++) {
       if (i != num)
-	ret += xwii_iface_set_led(dev->device,XWII_LED(i),0);
+	ret += xwii_iface_set_led(dev->xwii,XWII_LED(i),0);
     }
   }
 
@@ -85,20 +105,42 @@ int add_device_to_slot(struct wiimoteglue_state* state, struct wii_device_list *
 
   compute_device_map(state,dev);
 
+
+
   return 0;
 }
 
-int remove_device_from_slot(struct wii_device_list *dev) {
-  if (dev == NULL)
+int remove_device_from_slot(struct wii_device *dev) {
+  if (dev == NULL) {
     return -1;
+  }
+
 
   if (dev->slot == NULL)
     return 0; /*This is okay!*/
+
+  if (dev->slot_list == NULL) {
+    return -1; /*Something has gone wrong...*/
+  }
+
+  if (dev->slot_list->next != NULL)
+    dev->slot_list->next->prev = dev->slot_list->prev;
+
+  if (dev->slot_list->prev != NULL)
+    dev->slot_list->prev->next = dev->slot_list->next;
+
+
+
   if (dev->type == BALANCE) {
     dev->slot->has_board--;
   } else {
     dev->slot->has_wiimote--;
   }
+
+
+  dev->slot = NULL;
+
+
 
   return 0;
 }

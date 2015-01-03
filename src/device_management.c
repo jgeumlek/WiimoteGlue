@@ -28,37 +28,46 @@ int add_wii_device(struct wiimoteglue_state *state, char* syspath, const char* u
   }
 
   struct wii_device_list *list_node = calloc(1,sizeof(struct wii_device_list));
+  struct wii_device *dev= calloc(1,sizeof(struct wii_device));
 
 
 
-  list_node->device = wiidev;
-  list_node->ifaces = xwii_iface_opened(wiidev);
+  list_node->dev = dev;
+  dev->main_list = list_node;
 
 
-  if (state->ignore_pro && (list_node->ifaces & XWII_IFACE_PRO_CONTROLLER)) {
+  dev->xwii = wiidev;
+  dev->ifaces = xwii_iface_opened(wiidev);
+
+  dev->slot_list = calloc(1,sizeof(struct wii_device_list));
+  dev->slot_list->dev = dev;
+
+
+  if (state->ignore_pro && (dev->ifaces & XWII_IFACE_PRO_CONTROLLER)) {
     xwii_iface_unref(wiidev);
     free(list_node);
+    free(dev);
     return 0;
   }
 
 
 
-  list_node->type = REMOTE;
-  if (list_node->ifaces & XWII_IFACE_BALANCE_BOARD) {
-    list_node->type = BALANCE;
+  dev->type = REMOTE;
+  if (dev->ifaces & XWII_IFACE_BALANCE_BOARD) {
+    dev->type = BALANCE;
   }
-  if (list_node->ifaces & XWII_IFACE_PRO_CONTROLLER) {
-    list_node->type = PRO;
+  if (dev->ifaces & XWII_IFACE_PRO_CONTROLLER) {
+    dev->type = PRO;
   }
 
-  list_node->fd = xwii_iface_get_fd(wiidev);
-  wiimoteglue_epoll_watch_wiimote(state->epfd, list_node);
+  dev->fd = xwii_iface_get_fd(wiidev);
+  wiimoteglue_epoll_watch_wiimote(state->epfd, dev);
 
   if (state->num_slots > 0) {
-    list_node->slot = find_open_slot(state,list_node->type);
-    add_device_to_slot(state,list_node,list_node->slot);
+    struct virtual_controller *slot = find_open_slot(state,dev->type);
+    add_device_to_slot(state,dev,slot);
   } else {
-    add_device_to_slot(state,list_node,&state->slots[0]);
+    add_device_to_slot(state,dev,&state->slots[0]);
     /*If the user has no virtual gamepads,
      *they likely want devices to automatically
      *go to the keyboardmouse
@@ -67,58 +76,58 @@ int add_wii_device(struct wiimoteglue_state *state, char* syspath, const char* u
 
 
 
-  if (list_node->slot == NULL) {
-    if (list_node->type == BALANCE) {
+  if (dev->slot == NULL) {
+    if (dev->type == BALANCE) {
       printf("Balance board detected, but there's no open slots\n");
     } else {
       printf("Controller detected, but there's no open slots\n");
     }
     printf("(WiimoteGlue still has it open and listening...)\n");
   } else {
-    if (list_node->type == BALANCE) {
-      printf("Balance Board added to slot #%d\n",list_node->slot->slot_number);
+    if (dev->type == BALANCE) {
+      printf("Balance Board added to slot #%d\n",dev->slot->slot_number);
     } else {
-      printf("Controller added to slot #%d\n",list_node->slot->slot_number);
+      printf("Controller added to slot #%d\n",dev->slot->slot_number);
     }
 
   }
 
 
-  /*if (list_node->ifaces & XWII_IFACE_NUNCHUK) {
-    list_node->map = &state->general_maps.mode_no_ext;
-  } else if (list_node->ifaces & (XWII_IFACE_CLASSIC_CONTROLLER | XWII_IFACE_PRO_CONTROLLER)) {
-    list_node->map = &state->general_maps.mode_classic;
-  } else {
-    list_node->map = &state->general_maps.mode_no_ext;
-  }*/
+  compute_device_map(state,dev);
 
-  compute_device_map(state,list_node);
-
-  if (list_node->map->accel_active) {
+  if (dev->map->accel_active) {
     xwii_iface_open(wiidev,XWII_IFACE_ACCEL);
   } else {
     xwii_iface_close(wiidev,XWII_IFACE_ACCEL);
   }
 
-  if (list_node->map->IR_count) {
+  if (dev->map->IR_count) {
     xwii_iface_open(wiidev,XWII_IFACE_IR);
   } else {
     xwii_iface_close(wiidev,XWII_IFACE_IR);
   }
 
-  list_node->bluetooth_addr = malloc(18*sizeof(char));
-  strncpy(list_node->bluetooth_addr, uniq, 17);
-  list_node->bluetooth_addr[17] = '\0';
+  dev->bluetooth_addr = malloc(18*sizeof(char));
+  strncpy(dev->bluetooth_addr, uniq, 17);
+  dev->bluetooth_addr[17] = '\0';
 
-  list_node->id = malloc(32*sizeof(char));
-  snprintf(list_node->id,32,"dev%d",++(state->dev_count));
+  dev->id = malloc(32*sizeof(char));
+  snprintf(dev->id,32,"dev%d",++(state->dev_count));
 
-  printf("\tid: %s\n\taddress %s\n",list_node->id, list_node->bluetooth_addr);
+  printf("\tid: %s\n\taddress %s\n",dev->id, dev->bluetooth_addr);
 
 
-  list_node->next = state->devlist.next;
-  list_node->prev = &state->devlist;
-  state->devlist.next = list_node;
+  
+
+  list_node->next = &state->dev_list;
+  list_node->prev = state->dev_list.prev;
+
+  if (list_node->next != NULL)
+    list_node->next->prev = list_node;
+
+  if (list_node->prev != NULL)
+    list_node->prev->next = list_node;
+
 
 
 
@@ -126,20 +135,23 @@ int add_wii_device(struct wiimoteglue_state *state, char* syspath, const char* u
 
 }
 
-int close_wii_device(struct wii_device_list *dev) {
+int close_wii_device(struct wii_device *dev) {
     printf("Controller %s (%s) has been removed.\n",dev->id,dev->bluetooth_addr);
 
     close(dev->fd);
-    xwii_iface_unref(dev->device);
+    xwii_iface_unref(dev->xwii);
     if (dev->slot != NULL) {
       printf("(It was assigned slot #%d)\n",dev->slot->slot_number);
       remove_device_from_slot(dev);
     }
-    if (dev->prev) {
-      dev->prev->next = dev->next;
+
+
+    struct wii_device_list *list = dev->main_list;
+    if (list->prev) {
+      list->prev->next = list->next;
     }
-    if (dev->next) {
-      dev->next->prev = dev->prev;
+    if (list->next) {
+      list->next->prev = list->prev;
     }
 
     if (dev->id != NULL) {
@@ -149,7 +161,9 @@ int close_wii_device(struct wii_device_list *dev) {
       free(dev->bluetooth_addr);
     }
 
+    free(dev->slot_list);
     free(dev);
+    free(list);
 
     return 0;
 }

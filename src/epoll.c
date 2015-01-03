@@ -40,7 +40,7 @@ int wiimoteglue_epoll_watch_stdin(int epfd) {
   return epoll_ctl(epfd, EPOLL_CTL_ADD, 0, &event); //HACK magic constant
 }
 
-int wiimoteglue_epoll_watch_wiimote(int epfd, struct wii_device_list *device) {
+int wiimoteglue_epoll_watch_wiimote(int epfd, struct wii_device *device) {
   if (device == NULL) return 0; //TODO: ERROR HANDLING.
   memset(&event, 0, sizeof(event));
 

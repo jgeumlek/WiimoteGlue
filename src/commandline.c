@@ -84,7 +84,7 @@ void update_mapping(struct wiimoteglue_state *state, struct mode_mappings* maps,
 void toggle_setting(struct wiimoteglue_state *state, struct mode_mappings* maps, int active, char *mode, char *setting, char *opt);
 int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting);
 int list_devices(struct wii_device_list *devlist, char *option);
-struct wii_device_list* lookup_device(struct wii_device_list *devlist, char *name);
+struct wii_device* lookup_device(struct wii_device_list *devlist, char *name);
 int * get_input_key(char *key_name, int button_map[]);
 int * get_input_axis(char *axis_name, struct event_map *map);
 int get_output_key(char *key_name);
@@ -265,16 +265,16 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
     change_slot(state,args[1],args[2]);
     /*Currently no way to lookup devices assigned
      *to a slot, other than iterating over the list.*/
-    wiimoteglue_compute_all_device_maps(state,&state->devlist);
+    wiimoteglue_compute_all_device_maps(state,&state->dev_list);
     return;
   }
   if (strcmp(args[0],"assign") == 0) {
      assign_device(state,args[1],args[2]);
-     compute_device_map(state,&state->devlist);
+     compute_device_map(state,state->dev_list.dev);
      return;
   }
   if (strcmp(args[0],"list") == 0) {
-    list_devices(&state->devlist,args[1]);
+    list_devices(&state->dev_list,args[1]);
     return;
   }
 
@@ -381,7 +381,7 @@ void toggle_setting(struct wiimoteglue_state *state, struct mode_mappings* maps,
 
   if (strcmp(setting, "accel") == 0) {
     mapping->accel_active = active;
-    wiimoteglue_update_wiimote_ifaces(&state->devlist);
+    wiimoteglue_update_wiimote_ifaces(&state->dev_list);
     return;
   }
 
@@ -394,7 +394,7 @@ void toggle_setting(struct wiimoteglue_state *state, struct mode_mappings* maps,
 
     /*currently multiple IR sources, or a single one are treated identically*/
     mapping->IR_count = ir_count;
-    wiimoteglue_update_wiimote_ifaces(&state->devlist);
+    wiimoteglue_update_wiimote_ifaces(&state->dev_list);
     return;
   }
 
@@ -460,8 +460,16 @@ int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting) 
     return 0;
   }
 
-  printf("\'%s\' was not a recongnized setting.\n",setting);
-  printf("(try \"gamepad\" or \"keyboardmouse\"\n");
+  if (strcmp(setting, "list") == 0) {
+    printf("Listing devices in slot...\n");
+    list_devices(&slot->dev_list,NULL);
+    return 0;
+  }
+
+
+
+  printf("\'%s\' was not a recognized slot command.\n",setting);
+  printf("(try \"gamepad\" or \"keyboardmouse\")\n");
 
   return -1;
 }
@@ -471,7 +479,7 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
     printf("usage: assign <device name|device address> <slot number|\"keyboardmouse\"|\"none\">\n");
     return 0;
   }
-  struct wii_device_list* device = lookup_device(&state->devlist,devname);
+  struct wii_device* device = lookup_device(&state->dev_list,devname);
   if (device == NULL) {
     printf("\'%s\' did not match a device id or address.\n",devname);
     printf("Use \"list\" to see devices.\n");
@@ -496,9 +504,22 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
     return -1;
   }
 
+  int ret;
   /*Both of these functions handle NULL slots correctly*/
-  remove_device_from_slot(device);
-  add_device_to_slot(state,device,slot);
+  printf("removing... %p %p\n",device->slot,device->slot_list);
+  ret = remove_device_from_slot(device);
+  if (ret < 0) {
+    printf("ERROR REMOVING FROM SLOT %d\n",ret);
+    return -1;
+  }
+
+  printf("adding... %p %p\n",device->slot,device->slot_list);
+
+  ret = add_device_to_slot(state,device,slot);
+  if (ret < 0) {
+    printf("ERROR ADDING TO SLOT\n");
+    return -1;
+  }
 
   return 0;
 
@@ -508,57 +529,73 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
 
 
 int list_devices(struct wii_device_list *devlist, char *option) {
-  struct wii_device_list* dev = devlist;
+  if (devlist == NULL) {
+    return -1;
+  }
+  struct wii_device_list* list_node = devlist->next;
+
   static char* wiimote = "Wii Remote";
   static char* pro = "Wii U Pro Controller";
   static char* board = "Balance Board";
   static char* unknown = "Unknown Device Type?";
   char* type = unknown;
 
-  if (dev == NULL) {
-    return -1;
-  }
-  if (dev->device != NULL) {
-    if (dev->type == REMOTE)
-      type = wiimote;
-    if (dev->type == PRO)
-      type = pro;
-    if (dev->type == BALANCE)
-      type = board;
+  while (list_node != devlist && list_node != NULL) {
+    struct wii_device* dev = list_node->dev;
+    if (dev != NULL) {
+      if (dev->type == REMOTE)
+	type = wiimote;
+      if (dev->type == PRO)
+	type = pro;
+      if (dev->type == BALANCE)
+	type = board;
 
-    printf("- %s (%s)\n",dev->id,dev->bluetooth_addr);
-    printf("\t%s\n",type);
+      printf("\n- %s (%s)\n",dev->id,dev->bluetooth_addr);
+      printf("\t%s\n",type);
 
-    if (dev->slot != NULL) {
-      if (dev->slot->slot_number != 0) {
-	printf("\tAssigned to slot %d\n",dev->slot->slot_number);
+      if (dev->slot != NULL) {
+	if (dev->slot->slot_number != 0) {
+	  printf("\tAssigned to slot %d\n",dev->slot->slot_number);
+	} else {
+	  printf("\tAssigned to virtual keyboard/mouse\n");
+	}
+	printf("\t%p %p\n",dev->slot,dev->slot_list);
       } else {
-	printf("\tAssigned to virtual keyboard/mouse\n");
+	printf("\tNot assigned to any slot");
       }
-    } else {
-      printf("\tNot assigned to any slot");
+
     }
 
+    list_node = list_node->next;
   }
-  if (dev->next != NULL) {
-    list_devices(dev->next,option);
-  }
+
+
   return 0;
 }
 
-struct wii_device_list * lookup_device(struct wii_device_list *devlist, char *name) {
+struct wii_device * lookup_device(struct wii_device_list *devlist, char *name) {
 
   if (devlist == NULL) {
     return NULL;
   }
-  if (devlist->device != NULL) {
-    if (strncmp(name,devlist->id,32) == 0)
-      return devlist;
-    if (strncmp(name,devlist->bluetooth_addr,18) == 0)
-      return devlist;
+
+  struct wii_device_list* list_node = devlist->next;
+
+  while (*KEEP_LOOPING && list_node != devlist && list_node != NULL) {
+
+
+    if (list_node->dev != NULL) {
+      if (strncmp(name,list_node->dev->id,32) == 0)
+	return list_node->dev;
+      if (strncmp(name,list_node->dev->bluetooth_addr,18) == 0)
+	return list_node->dev;
+    }
+
+    list_node = list_node->next;
   }
 
-  return lookup_device(devlist->next,name);
+
+  return NULL;
 }
 
 

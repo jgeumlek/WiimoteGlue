@@ -53,9 +53,6 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
       if (subsystem != NULL && strcmp(subsystem, "hid") == 0) {
 	if (driver != NULL && strcmp(driver,"wiimote") == 0) {
 
-
-
-
 	  add_wii_device(state,syspath,uniq);
 	}
       }

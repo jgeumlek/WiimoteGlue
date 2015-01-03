@@ -24,49 +24,54 @@ void handle_IR(int uinput_fd, struct event_map *map, struct xwii_event_abs ev[])
 void handle_balance(int uinput_fd, struct event_map *map, struct xwii_event_abs ev[]);
 
 int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist) {
-  struct wii_device_list* dev = devlist;
-
-  if (dev == NULL) {
+  if (devlist == NULL)
     return -1;
-  }
-  if (dev->device != NULL) {
-    if (dev->map == NULL) {
-      return -1;
+
+  struct wii_device_list* list_node = devlist->next;
+
+  while (list_node != devlist && list_node != NULL) {
+
+    struct wii_device* dev = list_node->dev;
+
+
+    if (dev != NULL && dev->xwii != NULL) {
+      if (dev->map == NULL) {
+	return -1;
+      }
+
+      if (dev->map->accel_active) {
+	xwii_iface_open(dev->xwii,XWII_IFACE_ACCEL);
+      } else {
+	xwii_iface_close(dev->xwii,XWII_IFACE_ACCEL);
+      }
+
+      if (dev->map->IR_count) {
+	xwii_iface_open(dev->xwii,XWII_IFACE_IR);
+      } else {
+	xwii_iface_close(dev->xwii,XWII_IFACE_IR);
+      }
     }
 
-    if (dev->map->accel_active) {
-      xwii_iface_open(dev->device,XWII_IFACE_ACCEL);
-    } else {
-      xwii_iface_close(dev->device,XWII_IFACE_ACCEL);
-    }
+    list_node = list_node->next;
 
-    if (dev->map->IR_count) {
-      xwii_iface_open(dev->device,XWII_IFACE_IR);
-    } else {
-      xwii_iface_close(dev->device,XWII_IFACE_IR);
-    }
-  }
-
-
-  if (dev->next != NULL) {
-    wiimoteglue_update_wiimote_ifaces(dev->next);
   }
   return 0;
 }
 
 
 
-int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device_list *dev) {
+int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device *dev) {
   struct xwii_event ev;
   if (dev == NULL) {
     return -1;
   }
-  if (dev->slot == NULL) {
+
+  int ret = xwii_iface_dispatch(dev->xwii,&ev,sizeof(ev));
+  if (dev->slot == NULL && ev.type != XWII_EVENT_GONE) {
     /*Just ignore this event, but be sure to read it to clear it*/
-    xwii_iface_dispatch(dev->device,&ev,sizeof(ev));
     return -1;
   }
-  int ret = xwii_iface_dispatch(dev->device,&ev,sizeof(ev));
+
   if (ret < 0 && ret != -EAGAIN) {
     printf("Error reading controller. ");
     close_wii_device(dev);
@@ -105,24 +110,24 @@ int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_dev
       break;
     case XWII_EVENT_WATCH:
     case XWII_EVENT_GONE:
-      xwii_iface_open(dev->device,XWII_IFACE_CLASSIC_CONTROLLER | XWII_IFACE_NUNCHUK | XWII_IFACE_PRO_CONTROLLER | XWII_IFACE_BALANCE_BOARD);
-      dev->ifaces = xwii_iface_opened(dev->device);
+      xwii_iface_open(dev->xwii,XWII_IFACE_CLASSIC_CONTROLLER | XWII_IFACE_NUNCHUK | XWII_IFACE_PRO_CONTROLLER | XWII_IFACE_BALANCE_BOARD);
+      dev->ifaces = xwii_iface_opened(dev->xwii);
 
       compute_device_map(state,dev);
 
       if (dev->map->accel_active) {
-	xwii_iface_open(dev->device,XWII_IFACE_ACCEL);
+	xwii_iface_open(dev->xwii,XWII_IFACE_ACCEL);
       } else {
-	xwii_iface_close(dev->device,XWII_IFACE_ACCEL);
+	xwii_iface_close(dev->xwii,XWII_IFACE_ACCEL);
       }
 
       if (dev->map->IR_count) {
-	xwii_iface_open(dev->device,XWII_IFACE_IR);
+	xwii_iface_open(dev->xwii,XWII_IFACE_IR);
       } else {
-	xwii_iface_close(dev->device,XWII_IFACE_IR);
+	xwii_iface_close(dev->xwii,XWII_IFACE_IR);
       }
 
-      if (xwii_iface_available(dev->device) == 0 || dev->ifaces == 0) {
+      if (xwii_iface_available(dev->xwii) == 0 || dev->ifaces == 0) {
 	//Controller removed.
 	close_wii_device(dev);
       }

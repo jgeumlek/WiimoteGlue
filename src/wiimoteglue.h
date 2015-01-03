@@ -5,11 +5,9 @@
 #include <libudev.h>
 
 #define WIIMOTEGLUE_VERSION "1.01.wip"
-/*Let's not lie to ourselves here...
- *this code is a work in progress
- *and will change a lot. There isn't
- *really a true "1.0" release,
- *and no stability guarantees are made.
+/*Version string should change if
+ *backwards compatibility is broken.
+ *Otherwise, no guarantees.
  */
 
 #define ABS_LIMIT 32767
@@ -57,19 +55,30 @@ struct mode_mappings {
   struct event_map mode_classic;
 };
 
+struct virtual_controller;
+struct wii_device_list;
 
+struct wii_device {
 
-struct virtual_controller {
-  int uinput_fd;
-  int keyboardmouse_fd;
-  int gamepad_fd;
-  int slot_number;
-  int has_wiimote;
-  int has_board;
-  enum SLOT_TYPE {SLOT_KEYBOARDMOUSE,SLOT_GAMEPAD} type;
-  struct mode_mappings* slot_specific_mappings;
+  struct xwii_iface *xwii;
+  struct virtual_controller *slot;
+  int fd;
+
+  int ifaces;
+  struct event_map *map;
+  struct mode_mappings* dev_specific_mappings;
+
+  char* id;
+  char* bluetooth_addr;
+
+  enum DEVICE_TYPE { REMOTE, BALANCE, PRO} type;
+
+  /*At any time, a device should be in at most
+   *two lists: the main list of all devices,
+   *and the list of devices for a certain slot.
+   */
+  struct wii_device_list *main_list, *slot_list;
 };
-
 
 /*Mmm... Linked lists.
  *Ease of insertion and deletion is nice.
@@ -81,21 +90,29 @@ struct virtual_controller {
 struct wii_device_list {
   struct wii_device_list *prev, *next;
 
-
-  struct xwii_iface *device;
-  struct virtual_controller *slot;
-  int ifaces;
-  struct event_map *map;
-  struct mode_mappings* dev_specific_mappings;
-
-  char* id;
-  char* bluetooth_addr;
-
-  enum DEVICE_TYPE { REMOTE, BALANCE, PRO} type;
-
-  int fd;
-
+  struct wii_device *dev;
 };
+
+struct map_list {
+  struct map_list *prev, *next;
+
+  struct mode_mappings maps;
+};
+
+struct virtual_controller {
+  int uinput_fd;
+  int keyboardmouse_fd;
+  int gamepad_fd;
+  int slot_number;
+  char* slot_name;
+  int has_wiimote;
+  int has_board;
+  enum SLOT_TYPE {SLOT_KEYBOARDMOUSE,SLOT_GAMEPAD} type;
+  struct mode_mappings* slot_specific_mappings;
+
+  struct wii_device_list dev_list;
+};
+
 
 struct wiimoteglue_state {
   struct udev_monitor *monitor;
@@ -103,15 +120,15 @@ struct wiimoteglue_state {
   int num_slots;
 
   int virtual_keyboardmouse_fd; /*Handy enough to keep around*/
-  struct wii_device_list devlist;
+
   int epfd;
   int keep_looping;
   int load_lines; /*how many lines of loaded files have we processed? */
   int dev_count; /*simple counter for making identifiers*/
   int ignore_pro; /*ignore Wii U Pro Controllers?*/
 
-
-  struct mode_mappings general_maps;
+  struct wii_device_list dev_list;
+  struct map_list head_map;
 };
 
 int * KEEP_LOOPING; //Sprinkle around some checks to let signals interrupt.
@@ -162,20 +179,20 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state* state);
 
 int wiimoteglue_epoll_init(int *epfd);
 int wiimoteglue_epoll_watch_monitor(int epfd, int mon_fd, void *monitor);
-int wiimoteglue_epoll_watch_wiimote(int epfd, struct wii_device_list *device);
+int wiimoteglue_epoll_watch_wiimote(int epfd, struct wii_device *device);
 int wiimoteglue_epoll_watch_stdin(int epfd);
 void wiimoteglue_epoll_loop(int epfd, struct wiimoteglue_state *state);
 
 int wiimoteglue_load_command_file(struct wiimoteglue_state *state, char *filename);
 int wiimoteglue_handle_input(struct wiimoteglue_state *state, int file);
-int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist);
 
-int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device_list *dev);
+int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist);
+int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device *dev);
 
 struct virtual_controller* find_open_slot(struct wiimoteglue_state *state, int dev_type);
 
 int wiimoteglue_compute_all_device_maps(struct wiimoteglue_state* state, struct wii_device_list *devlist);
-int compute_device_map(struct wiimoteglue_state* state, struct wii_device_list *devlist);
+int compute_device_map(struct wiimoteglue_state* state, struct wii_device *devlist);
 struct mode_mappings* lookup_mappings(struct wiimoteglue_state* state, char* map_name);
 
 int * get_input_key(char *key_name, int button_map[]);

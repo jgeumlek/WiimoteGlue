@@ -2,7 +2,7 @@ LINK_LIBS += -ludev
 LINK_LIBS += -lxwiimote
 EXTRA_CFLAGS += $(CONFIG_FLAGS)
 
-wiimoteglue: src/key_codes.c
+wiimoteglue: src/*.c
 	$(CC) -o wiimoteglue $(EXTRA_CFLAGS) $(LINK_LIBS) src/*.c
 
 keycodefix:

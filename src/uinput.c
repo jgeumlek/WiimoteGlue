@@ -45,6 +45,8 @@ int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], ch
   slots[0].has_wiimote = 0;
   slots[0].has_board = 0;
   slots[0].slot_number = 0;
+  slots[0].dev_list.next = &slots[i].dev_list;
+  slots[0].dev_list.prev = &slots[i].dev_list;
 
 
   for (i = 1; i <= num_slots; i++) {
@@ -58,6 +60,8 @@ int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], ch
     slots[i].slot_number = i;
     slots[i].has_wiimote = 0;
     slots[i].has_board = 0;
+    slots[i].dev_list.next = &slots[i].dev_list;
+    slots[i].dev_list.prev = &slots[i].dev_list;
   }
 
 

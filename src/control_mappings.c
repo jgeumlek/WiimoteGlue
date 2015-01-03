@@ -10,14 +10,15 @@
  *look in process_xwiimote_events.c
  */
 
-int compute_device_map(struct wiimoteglue_state* state, struct wii_device_list* dev) {
+int compute_device_map(struct wiimoteglue_state* state, struct wii_device* dev) {
   if (dev == NULL)
     return -1;
-  struct mode_mappings* maps = &state->general_maps;
+  struct mode_mappings* maps = &state->head_map.maps;
 
   if (dev->slot != NULL && dev->slot->slot_specific_mappings != NULL) {
     maps = dev->slot->slot_specific_mappings;
   }
+
   if (dev->dev_specific_mappings != NULL)
     maps = dev->dev_specific_mappings;
 
@@ -34,17 +35,23 @@ int compute_device_map(struct wiimoteglue_state* state, struct wii_device_list* 
 }
 
 int wiimoteglue_compute_all_device_maps(struct wiimoteglue_state* state, struct wii_device_list *devlist) {
-  struct wii_device_list* dev = devlist;
-
-  if (dev == NULL) {
+  if (devlist == NULL) {
     return -1;
   }
-  if (dev->device != NULL) {
-    compute_device_map(state,dev);
-  }
 
-  if (dev->next != NULL) {
-    wiimoteglue_compute_all_device_maps(state,dev->next);
+  struct wii_device_list* list_node = devlist->next;
+
+  while (list_node != devlist && list_node != NULL) {
+    struct wii_device* dev = list_node->dev;
+
+
+    if (dev != NULL) {
+      compute_device_map(state,dev);
+    }
+
+    
+
+    list_node = list_node->next;
   }
   return 0;
 }
@@ -69,7 +76,7 @@ struct mode_mappings* lookup_mappings(struct wiimoteglue_state* state, char* map
   if (map_name == NULL)
     return NULL;
   if (strcmp(map_name,"gamepad") == 0)
-    return &state->general_maps;
+    return &state->head_map.maps;
   if (strcmp(map_name,"keyboardmouse") == 0)
     return state->slots[0].slot_specific_mappings;
 

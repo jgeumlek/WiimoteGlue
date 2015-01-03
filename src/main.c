@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
 
   state.virtual_keyboardmouse_fd = state.slots[0].uinput_fd;
 
-  init_gamepad_mappings(&state.general_maps,"gamepad");
+  init_gamepad_mappings(&state.head_map.maps,"gamepad");
 
   struct mode_mappings keymouse;
   init_keyboardmouse_mappings(&keymouse,"keyboardmouse");
@@ -115,6 +115,9 @@ int main(int argc, char *argv[]) {
   set_slot_specific_mappings(&state.slots[0],&keymouse);
 
 
+  /*The device llist is cyclic*/
+  state.dev_list.next = &state.dev_list;
+  state.dev_list.prev = &state.dev_list;
 
 
   //Start a monitor? (ASSUME YES FOR NOW)
@@ -167,17 +170,13 @@ int main(int argc, char *argv[]) {
   wiimoteglue_uinput_close(state.num_slots, state.slots);
 
 
-  struct wii_device_list *list_node = state.devlist.next;
-  for (; list_node != NULL; ) {
-    xwii_iface_unref(list_node->device);
+  struct wii_device_list *list_node = state.dev_list.next;
+  while (list_node != &state.dev_list && list_node != NULL) {
+
     struct wii_device_list *next = list_node->next;
-    if (list_node->id != NULL) {
-      free(list_node->id);
-    }
-    if (list_node->bluetooth_addr != NULL) {
-      free(list_node->bluetooth_addr);
-    }
-    free(list_node);
+
+    close_wii_device(list_node->dev);
+
     list_node = next;
   }
 
