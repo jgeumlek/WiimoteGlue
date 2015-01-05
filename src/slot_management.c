@@ -6,6 +6,24 @@
  *the virtual controller slots.
  */
 
+#define NUM_SLOT_PATTERNS 9
+bool slot_leds[NUM_SLOT_PATTERNS+1][4] = {
+  {0,1,1,0}, /*keyboardmouse slot*/
+  {1,0,0,0}, /*slot 1... etc. */
+  {0,1,0,0},
+  {0,0,1,0},
+  {0,0,0,1},
+  {1,0,0,1},
+  {0,1,0,1},
+  {0,0,1,1},
+  {1,0,1,1},
+  {0,1,1,1}
+};
+
+
+bool no_slot_leds[4] = {1,0,1,0};
+bool slot_overflow_leds[4] = {1,1,1,1};
+
 struct virtual_controller* find_open_wiimote_slot(struct wiimoteglue_state *state) {
   int i;
   for (i = 1; i <= state->num_slots; i++) {
@@ -40,10 +58,7 @@ int add_device_to_slot(struct wiimoteglue_state* state, struct wii_device *dev, 
     return -1;
 
   if (slot == NULL) {
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(1),0);
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(2),1);
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(3),0);
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(4),1);
+    ret = set_led_state(state,dev,no_slot_leds);
     if (ret < 0)
       printf("There were errors on setting the LEDs. Permissions?\n");
 
@@ -55,7 +70,7 @@ int add_device_to_slot(struct wiimoteglue_state* state, struct wii_device *dev, 
 
 
   dev->slot_list->next = slot->dev_list.next;
-  dev->slot_list->prev = slot->dev_list.prev;
+  dev->slot_list->prev = &slot->dev_list;
 
   if (slot->dev_list.next != NULL) {
     slot->dev_list.next->prev = dev->slot_list;
@@ -80,24 +95,13 @@ int add_device_to_slot(struct wiimoteglue_state* state, struct wii_device *dev, 
 
   if (num <= 0) {
     /*Keyboard/mouse slot. Let's just set a distinctive pattern.*/
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(1),1);
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(2),0);
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(3),1);
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(4),0);
+   ret = set_led_state(state,dev,slot_leds[0]);
 
-  } else if (num > 4) {
+  } else if (num > NUM_SLOT_PATTERNS) {
     /*Future work: add some reasonable patterns here for higher nums?*/
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(1),1);
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(2),1);
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(3),1);
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(4),1);
+    ret = set_led_state(state,dev,slot_overflow_leds);
   } else {
-    int i;
-    ret += xwii_iface_set_led(dev->xwii,XWII_LED(num),1);
-    for (i = 1; i <= 4; i++) {
-      if (i != num)
-	ret += xwii_iface_set_led(dev->xwii,XWII_LED(i),0);
-    }
+    ret = set_led_state(state,dev,&slot_leds[num]);
   }
 
   if (ret < 0)
@@ -185,6 +189,20 @@ int set_slot_specific_mappings(struct virtual_controller *slot, struct mode_mapp
     return -1;
 
   slot->slot_specific_mappings = maps;
+
+}
+
+struct virtual_controller* lookup_slot(struct wiimoteglue_state* state, char* name) {
+  if (name == NULL)
+    return NULL;
+
+  int i;
+  for (i = 0; i <= state->num_slots; i++) {
+    if (strncmp(name,state->slots[i].slot_name,WG_MAX_NAME_SIZE) == 0)
+      return &state->slots[i];
+  }
+
+  return NULL;
 
 }
 

@@ -27,6 +27,7 @@ int add_wii_device(struct wiimoteglue_state *state, char* syspath, const char* u
     return -1;
   }
 
+
   struct wii_device_list *list_node = calloc(1,sizeof(struct wii_device_list));
   struct wii_device *dev= calloc(1,sizeof(struct wii_device));
 
@@ -63,6 +64,8 @@ int add_wii_device(struct wiimoteglue_state *state, char* syspath, const char* u
   dev->fd = xwii_iface_get_fd(wiidev);
   wiimoteglue_epoll_watch_wiimote(state->epfd, dev);
 
+  store_led_state(state,dev);
+
   if (state->num_slots > 0) {
     struct virtual_controller *slot = find_open_slot(state,dev->type);
     add_device_to_slot(state,dev,slot);
@@ -85,9 +88,9 @@ int add_wii_device(struct wiimoteglue_state *state, char* syspath, const char* u
     printf("(WiimoteGlue still has it open and listening...)\n");
   } else {
     if (dev->type == BALANCE) {
-      printf("Balance Board added to slot #%d\n",dev->slot->slot_number);
+      printf("Balance Board added to slot %s\n",dev->slot->slot_name);
     } else {
-      printf("Controller added to slot #%d\n",dev->slot->slot_number);
+      printf("Controller added to slot %s\n",dev->slot->slot_name);
     }
 
   }
@@ -111,13 +114,13 @@ int add_wii_device(struct wiimoteglue_state *state, char* syspath, const char* u
   strncpy(dev->bluetooth_addr, uniq, 17);
   dev->bluetooth_addr[17] = '\0';
 
-  dev->id = malloc(32*sizeof(char));
-  snprintf(dev->id,32,"dev%d",++(state->dev_count));
+  dev->id = calloc(WG_MAX_NAME_SIZE,sizeof(char));
+  snprintf(dev->id,WG_MAX_NAME_SIZE,"dev%d",++(state->dev_count));
 
   printf("\tid: %s\n\taddress %s\n",dev->id, dev->bluetooth_addr);
 
 
-  
+
 
   list_node->next = &state->dev_list;
   list_node->prev = state->dev_list.prev;
@@ -131,17 +134,20 @@ int add_wii_device(struct wiimoteglue_state *state, char* syspath, const char* u
 
 
 
+
   return 0;
 
 }
 
-int close_wii_device(struct wii_device *dev) {
+int close_wii_device(struct wiimoteglue_state* state, struct wii_device *dev) {
     printf("Controller %s (%s) has been removed.\n",dev->id,dev->bluetooth_addr);
 
+    set_led_state(state,dev,dev->original_leds);
     close(dev->fd);
+
     xwii_iface_unref(dev->xwii);
     if (dev->slot != NULL) {
-      printf("(It was assigned slot #%d)\n",dev->slot->slot_number);
+      printf("(It was assigned slot %s)\n",dev->slot->slot_name);
       remove_device_from_slot(dev);
     }
 
@@ -166,4 +172,60 @@ int close_wii_device(struct wii_device *dev) {
     free(list);
 
     return 0;
+}
+
+
+int store_led_state(struct wiimoteglue_state* state, struct wii_device *dev) {
+  if (dev == NULL)
+    return -1;
+  if (state->set_leds == 0 || dev->type == BALANCE)
+    return 0; /*do nothing*/
+  /*This code will have to change
+   *if there is ever a wiimote with
+   *more than 4 LEDs.
+   */
+  int i;
+  int ret;
+  int okay = 0;
+  for (i = 1; i <= 4; i++) {
+    ret = xwii_iface_get_led(dev->xwii,XWII_LED(i),&dev->original_leds[i-1]);
+    if (ret < 0) {
+      dev->original_leds[i-1] = -1;
+      okay = -1;
+    }
+  }
+  return okay;
+}
+
+int set_led_state(struct wiimoteglue_state* state, struct wii_device *dev, bool leds[]) {
+  /*This code will have to change
+   *if there is ever a wiimote with
+   *more than 4 LEDs.
+   */
+
+  if (dev == NULL || leds == NULL)
+    return -1;
+  if (state->set_leds == 0 || dev->type == BALANCE)
+    return 0; /*do nothing*/
+  int i;
+  int ret;
+  int okay = 0;
+
+  for (i = 1; i <= 4; i++) {
+    if (leds[i-1] < 0)
+      return -1;
+    /*if anything seems fishy, bail out.
+     *We really don't want to end up with
+     *a device connected but with all 4
+     *leds off.
+     */
+  }
+
+  for (i = 1; i <= 4; i++) {
+    ret = xwii_iface_set_led(dev->xwii,XWII_LED(i),leds[i-1]);
+    if (ret < 0) {
+      okay = -1;
+    }
+  }
+  return okay;
 }

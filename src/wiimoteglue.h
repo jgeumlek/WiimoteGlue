@@ -25,6 +25,11 @@
  */
 #define MAX_LOAD_LINES 500
 
+/* Used throughout as a max length for various identifiers,
+ * like device IDs or mapping names
+ */
+#define WG_MAX_NAME_SIZE 32
+
 
 
 
@@ -78,6 +83,11 @@ struct wii_device {
    *and the list of devices for a certain slot.
    */
   struct wii_device_list *main_list, *slot_list;
+
+  bool original_leds[4];
+  /*Let's be nice and leave the LEDs
+   *how we found them.
+   */
 };
 
 /*Mmm... Linked lists.
@@ -126,6 +136,7 @@ struct wiimoteglue_state {
   int load_lines; /*how many lines of loaded files have we processed? */
   int dev_count; /*simple counter for making identifiers*/
   int ignore_pro; /*ignore Wii U Pro Controllers?*/
+  int set_leds; /*Should we try changing controlle LEDs?*/
 
   struct wii_device_list dev_list;
   struct map_list head_map;
@@ -186,10 +197,11 @@ void wiimoteglue_epoll_loop(int epfd, struct wiimoteglue_state *state);
 int wiimoteglue_load_command_file(struct wiimoteglue_state *state, char *filename);
 int wiimoteglue_handle_input(struct wiimoteglue_state *state, int file);
 
-int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist);
+int wiimoteglue_update_wiimote_ifaces(struct wii_device *dev);
 int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device *dev);
 
 struct virtual_controller* find_open_slot(struct wiimoteglue_state *state, int dev_type);
+struct virtual_controller* lookup_slot(struct wiimoteglue_state* state, char* name);
 
 int wiimoteglue_compute_all_device_maps(struct wiimoteglue_state* state, struct wii_device_list *devlist);
 int compute_device_map(struct wiimoteglue_state* state, struct wii_device *devlist);

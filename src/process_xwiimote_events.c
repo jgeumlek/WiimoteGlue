@@ -23,18 +23,27 @@ void handle_accel(int uinput_fd, struct event_map *map, struct xwii_event_abs ev
 void handle_IR(int uinput_fd, struct event_map *map, struct xwii_event_abs ev[]);
 void handle_balance(int uinput_fd, struct event_map *map, struct xwii_event_abs ev[]);
 
-int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist) {
+int wiimoteglue_update_all_wiimote_ifaces(struct wii_device_list *devlist) {
   if (devlist == NULL)
     return -1;
 
   struct wii_device_list* list_node = devlist->next;
 
-  while (list_node != devlist && list_node != NULL) {
+  while (*KEEP_LOOPING && list_node != devlist && list_node != NULL) {
 
     struct wii_device* dev = list_node->dev;
 
 
-    if (dev != NULL && dev->xwii != NULL) {
+    wiimoteglue_update_wiimote_ifaces(dev);
+
+    list_node = list_node->next;
+
+  }
+  return 0;
+}
+
+int wiimoteglue_update_wiimote_ifaces(struct wii_device *dev) {
+  if (dev != NULL && dev->xwii != NULL) {
       if (dev->map == NULL) {
 	return -1;
       }
@@ -51,11 +60,6 @@ int wiimoteglue_update_wiimote_ifaces(struct wii_device_list *devlist) {
 	xwii_iface_close(dev->xwii,XWII_IFACE_IR);
       }
     }
-
-    list_node = list_node->next;
-
-  }
-  return 0;
 }
 
 
@@ -129,7 +133,7 @@ int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_dev
 
       if (xwii_iface_available(dev->xwii) == 0 || dev->ifaces == 0) {
 	//Controller removed.
-	close_wii_device(dev);
+	close_wii_device(state, dev);
       }
       break;
 

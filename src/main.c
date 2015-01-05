@@ -34,6 +34,7 @@ struct commandline_options {
   int check_for_existing_wiimotes;
   int monitor_for_new_wiimotes;
   int ignore_pro;
+  int no_set_leds;
   char* virt_gamepad_name;
   char* virt_keyboardmouse_name;
   char* uinput_path;
@@ -61,6 +62,9 @@ int main(int argc, char *argv[]) {
     return ret;
   }
   printf("WiimoteGlue Version %s\n\n",WIIMOTEGLUE_VERSION);
+
+  if (!options.no_set_leds)
+    state.set_leds = 1;
 
   if (options.ignore_pro) {
     printf("Wii U Pro controllers will be ignored.\n");
@@ -167,7 +171,7 @@ int main(int argc, char *argv[]) {
 
 
   printf("Shutting down...\n");
-  wiimoteglue_uinput_close(state.num_slots, state.slots);
+
 
 
   struct wii_device_list *list_node = state.dev_list.next;
@@ -175,10 +179,12 @@ int main(int argc, char *argv[]) {
 
     struct wii_device_list *next = list_node->next;
 
-    close_wii_device(list_node->dev);
+    close_wii_device(&state,list_node->dev);
 
     list_node = next;
   }
+
+  wiimoteglue_uinput_close(state.num_slots, state.slots);
 
   free(state.slots);
 
@@ -205,6 +211,7 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      printf("  -n, --num-pads <number>\tNumber of fake gamepad slots to create\n");
      printf("      --uinput-path\t\tSpecify path to uinput\n");
      printf("      --ignore-pro\t\tIgnore Wii U Pro controllers\n");
+     printf("      --no-set-leds\t\tDon't change controller LEDS\n");
      return 1;
    }
    if (strcmp("--version",argv[0]) == 0 || strcmp("-v",argv[0]) == 0) {
@@ -263,6 +270,8 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      argv++;
    } else if (strcmp("--ignore-pro",argv[0]) == 0) {
      options->ignore_pro = 1;
+   }else if (strcmp("--no-set-leds",argv[0]) == 0) {
+     options->no_set_leds = 1;
    } else {
      printf("Argument \"%s\" not recognized.\n",argv[0]);
      return -1;

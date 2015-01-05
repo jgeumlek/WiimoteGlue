@@ -263,9 +263,6 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
   }
   if (strcmp(args[0],"slot") == 0) {
     change_slot(state,args[1],args[2]);
-    /*Currently no way to lookup devices assigned
-     *to a slot, other than iterating over the list.*/
-    wiimoteglue_compute_all_device_maps(state,&state->dev_list);
     return;
   }
   if (strcmp(args[0],"assign") == 0) {
@@ -381,7 +378,7 @@ void toggle_setting(struct wiimoteglue_state *state, struct mode_mappings* maps,
 
   if (strcmp(setting, "accel") == 0) {
     mapping->accel_active = active;
-    wiimoteglue_update_wiimote_ifaces(&state->dev_list);
+    wiimoteglue_update_all_wiimote_ifaces(&state->dev_list);
     return;
   }
 
@@ -394,7 +391,7 @@ void toggle_setting(struct wiimoteglue_state *state, struct mode_mappings* maps,
 
     /*currently multiple IR sources, or a single one are treated identically*/
     mapping->IR_count = ir_count;
-    wiimoteglue_update_wiimote_ifaces(&state->dev_list);
+    wiimoteglue_update_all_wiimote_ifaces(&state->dev_list);
     return;
   }
 
@@ -438,30 +435,46 @@ int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting) 
     return -1;
   }
 
-  int slotnumber = slotname[0] - '0'; /*HACK: single-digit atoi*/
 
-
-  if (slotnumber < 1 || slotnumber > state->num_slots) {
-    printf("\'%s\' is not a valid slot number.\n",slotname);
+  int ret;
+  struct virtual_controller* slot = lookup_slot(state,slotname);
+  if (slot == NULL) {
+    printf("\'%s\' was not a valid slot.\n",slotname);
+    printf("Valid choices are ");
+    int i;
+    for (i = 0; i < state->num_slots; i++) {
+      printf("%s, ",state->slots[i].slot_name);
+    }
+    /*Yes, that comma makes this worthwhile.*/
+    printf("%s",state->slots[state->num_slots].slot_name);
     return -1;
   }
 
-  struct virtual_controller* slot = &state->slots[slotnumber];
-
   if (strcmp(setting, "gamepad") == 0) {
-    printf("Setting slot %d to be a virtual gamepad.\n",slotnumber);
-    change_slot_type(state,slot,SLOT_GAMEPAD);
+    ret = change_slot_type(state,slot,SLOT_GAMEPAD);
+    if (ret >= 0) {
+      printf("Setting slot %s to be a virtual gamepad.\n",slot->slot_name);
+    } else {
+      printf("Could not change slot %s's type.\n",slot->slot_name);
+      return -1;
+    }
+    wiimoteglue_compute_all_device_maps(state,&slot->dev_list);
     return 0;
   }
 
   if (strcmp(setting, "keyboardmouse") == 0) {
-    printf("Setting slot %d to be a virtual keyboard/mouse combo.\n",slotnumber);
-    change_slot_type(state,slot,SLOT_KEYBOARDMOUSE);
+    ret = change_slot_type(state,slot,SLOT_KEYBOARDMOUSE);
+    if (ret >= 0) {
+      printf("Setting slot %s to be a virtual keyboard/mouse combo.\n",slot->slot_name);
+    } else {
+      printf("Could not change slot %s's type.\n",slot->slot_name);
+      return -1;
+    }
+    wiimoteglue_compute_all_device_maps(state,&slot->dev_list);
     return 0;
   }
 
   if (strcmp(setting, "list") == 0) {
-    printf("Listing devices in slot...\n");
     list_devices(&slot->dev_list,NULL);
     return 0;
   }
@@ -485,20 +498,14 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
     printf("Use \"list\" to see devices.\n");
     return -1;
   }
-  struct virtual_controller* slot = NULL;
-  int slotnumber = slotname[0] - '0'; /*HACK: single-digit atoi*/
-  if (slotnumber >= 1 && slotnumber <= state->num_slots) {
-    slot = &state->slots[slotnumber];
-  }
-  if (strcmp(slotname,"keyboardmouse") == 0) {
-    slot = &state->slots[0];
-  }
+  struct virtual_controller* slot = lookup_slot(state,slotname);
+
   if (slot == NULL && strcmp(slotname,"none") != 0) {
     printf("\'%s\' was not a valid slot.\n",slotname);
-    printf("Valid choices are keyboardmouse, ");
+    printf("Valid choices are ");
     int i;
-    for (i = 1; i <= state->num_slots; i++) {
-      printf("%d, ",i);
+    for (i = 0; i <= state->num_slots; i++) {
+      printf("%s, ",state->slots[i].slot_name);
     }
     printf("none\n");
     return -1;
@@ -506,18 +513,16 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
 
   int ret;
   /*Both of these functions handle NULL slots correctly*/
-  printf("removing... %p %p\n",device->slot,device->slot_list);
   ret = remove_device_from_slot(device);
   if (ret < 0) {
-    printf("ERROR REMOVING FROM SLOT %d\n",ret);
+    printf("Something went wrong when removing from previous slot.\n");
     return -1;
   }
 
-  printf("adding... %p %p\n",device->slot,device->slot_list);
 
   ret = add_device_to_slot(state,device,slot);
   if (ret < 0) {
-    printf("ERROR ADDING TO SLOT\n");
+    printf("Something went wrong when adding to new slot.\n");
     return -1;
   }
 
@@ -540,7 +545,7 @@ int list_devices(struct wii_device_list *devlist, char *option) {
   static char* unknown = "Unknown Device Type?";
   char* type = unknown;
 
-  while (list_node != devlist && list_node != NULL) {
+  while (*KEEP_LOOPING && list_node != devlist && list_node != NULL) {
     struct wii_device* dev = list_node->dev;
     if (dev != NULL) {
       if (dev->type == REMOTE)
@@ -554,12 +559,10 @@ int list_devices(struct wii_device_list *devlist, char *option) {
       printf("\t%s\n",type);
 
       if (dev->slot != NULL) {
-	if (dev->slot->slot_number != 0) {
-	  printf("\tAssigned to slot %d\n",dev->slot->slot_number);
-	} else {
-	  printf("\tAssigned to virtual keyboard/mouse\n");
-	}
-	printf("\t%p %p\n",dev->slot,dev->slot_list);
+	printf("\tAssigned to slot %s\n",dev->slot->slot_name);
+
+	if (dev->slot->slot_specific_mappings != NULL)
+	    printf("\t (slot has a specific mapping: %s)\n",dev->slot->slot_specific_mappings->name);
       } else {
 	printf("\tNot assigned to any slot");
       }
@@ -585,7 +588,7 @@ struct wii_device * lookup_device(struct wii_device_list *devlist, char *name) {
 
 
     if (list_node->dev != NULL) {
-      if (strncmp(name,list_node->dev->id,32) == 0)
+      if (strncmp(name,list_node->dev->id,WG_MAX_NAME_SIZE) == 0)
 	return list_node->dev;
       if (strncmp(name,list_node->dev->bluetooth_addr,18) == 0)
 	return list_node->dev;

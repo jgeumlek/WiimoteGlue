@@ -30,6 +30,8 @@ int compute_device_map(struct wiimoteglue_state* state, struct wii_device* dev) 
     dev->map = &maps->mode_no_ext;
   }
 
+  wiimoteglue_update_wiimote_ifaces(dev);
+
   return 0;
 
 }
@@ -49,7 +51,7 @@ int wiimoteglue_compute_all_device_maps(struct wiimoteglue_state* state, struct 
       compute_device_map(state,dev);
     }
 
-    
+
 
     list_node = list_node->next;
   }

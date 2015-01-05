@@ -39,14 +39,19 @@ int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], ch
     return -1;
   }
 
+
+
   slots[0].uinput_fd = keyboardmouse_fd;
   slots[0].keyboardmouse_fd = slots[0].uinput_fd;
   slots[0].gamepad_fd = slots[0].uinput_fd;
   slots[0].has_wiimote = 0;
   slots[0].has_board = 0;
   slots[0].slot_number = 0;
-  slots[0].dev_list.next = &slots[i].dev_list;
-  slots[0].dev_list.prev = &slots[i].dev_list;
+  slots[0].dev_list.next = &slots[0].dev_list;
+  slots[0].dev_list.prev = &slots[0].dev_list;
+  slots[0].slot_name = calloc(WG_MAX_NAME_SIZE,sizeof(char));
+  strncpy(slots[0].slot_name,"keyboardmouse",WG_MAX_NAME_SIZE);
+
 
 
   for (i = 1; i <= num_slots; i++) {
@@ -62,6 +67,8 @@ int wiimoteglue_uinput_init(int num_slots, struct virtual_controller slots[], ch
     slots[i].has_board = 0;
     slots[i].dev_list.next = &slots[i].dev_list;
     slots[i].dev_list.prev = &slots[i].dev_list;
+    slots[i].slot_name = calloc(WG_MAX_NAME_SIZE,sizeof(char));
+    snprintf(slots[i].slot_name,WG_MAX_NAME_SIZE,"%d",i);
   }
 
 
@@ -74,8 +81,11 @@ int wiimoteglue_uinput_close(int num_slots, struct virtual_controller slots[]) {
   /*Remember, there are num_slots+1 devices, because of the fake keyboard/mouse */
   for (i = 0; i <= num_slots; i++) {
     if (ioctl(slots[i].uinput_fd, UI_DEV_DESTROY) < 0) {
-      //printf("Error destroying uinput device.\n");
+      printf("Error destroying uinput device.\n");
     }
+
+    free(slots[i].slot_name);
+
     close(slots[i].uinput_fd);
   }
 

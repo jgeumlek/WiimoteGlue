@@ -138,20 +138,20 @@ You need write access to uinput to create the virtual gamepads. WiimoteGlue assu
 
 You need read access to the various event devices created by the kernel driver. Either run WiimoteGlue as root (not recommended) or set up some udev rules to automatically change the permissions. I'd recommed creating some sort of "input" group, changing the group ownership of the devices to be that group, and add your user account to that group (Reminder: you need to open a new shell to update your group permissions after adding yourself to the group!)
 
-    KERNEL=="event*", DRIVERS=="wiimote", GROUP="input", MODE="0660"
+    KERNEL=="event*", DRIVERS=="wiimote", GROUP="<groupname>", MODE="0660"
 
-seems to be a working udev rule for me.
+(where \<groupname\> is the name of some user group you've added yourself to.0
 
 When rumble support is added, you'll need write access as well. (though only to the core wiimote and Wii U pro devices; nunchuks and classic controllers don't have rumble)
 
 When LED changing is added, you'll also need write access to the LED brightness files. These LED devices are handled with by the kernel LED subsystem instead of the input subsystem.
 
-    SUBSYSTEM=="leds", ACTION=="add", DRIVERS=="wiimote", RUN+="/bin/sh -c 'chgrp input /sys%p/brightness'", RUN+="/bin/sh -c 'chmod g+w /sys%p/brightness'"
+    SUBSYSTEM=="leds", ACTION=="add", DRIVERS=="wiimote", RUN+="/bin/sh -c 'chgrp <groupname> /sys%p/brightness'", RUN+="/bin/sh -c 'chmod g+w /sys%p/brightness'"
 
 seems to be working for me, but there is probably a better way to write this udev rule.
 
 
-###North, south, east, west? What are those? My "A" button isn't acting like a "A" button.
+###North, south, east, west? What are those? My "A" button isn't acting like an "A" button.
 
 See the Linux gamepad documentation. These are the "face buttons" generally pushed by one's right thumb.
 
@@ -171,7 +171,6 @@ For reference:
 
 Playstation controllers don't even use labels like A,B, or Y but instead use shapes. One of those shapes is "X," and it doesn't line up with any of the three layouts above. Aren't game controllers fun?
 
-BTN_SOUTH is also identified as BTN_GAMEPAD, and is considered the primary button; according to the Linux gamepad API, outputting BTN_GAMEPAD is what makes a gamepad a gamepad. (SDL however has an extra requirement of outputting ABS_X and ABS_Y)
 
 ###When I mapped my control stick to the mouse, centering the stick centers the cursor. this doesn't seem very useful?
 
@@ -196,7 +195,7 @@ First, note that you need to specify you wish to change the keyboard mapping ins
 
     map keyboardmouse <mode> <wiimote input event> <virtual output event>
 
-where "<mode>" is one of the extension modes: wiimote, nunchuk, or classic.
+where "\<mode\>" is one of the extension modes: wiimote, nunchuk, or classic.
 
 "keyboardmouse" names a mapping, and a mapping has all three modes. When no mapping name is given, the "map" command assumes you meant the "gamepad" mapping.
 
@@ -368,7 +367,7 @@ The X11 driver is also handy, but it is designed for emulating a keyboard/mouse 
 
 ###Why all this hassle over switching between the fake gamepads and the fake keyboard?
 
-One could create a virtual device that has all the functionality of a gamepad, keyboard, and mouse all-in-one. However, both mice and gamepads use ABS_X and ABS_Y. If it was one device, I'd need to tell X to ignore or pay attention to ABS_X/Y depending on whether we are in gamepad mode or mouse mode, since most people don't want their gamepads controlling the cursor.
+One could create a virtual device that has all the functionality of a gamepad, keyboard, and mouse all-in-one. However, both mice and gamepads use ABS_X and ABS_Y. If it was one device, We'd need to tell X to ignore or pay attention to ABS_X/Y depending on whether we are in gamepad mode or mouse mode, since most people don't want their gamepads controlling the cursor.
 
 By separating them, the gamepads are automagically picked up as gamepads, the fake keyboard/mouse is picked up as a keyboard/mouse, and not much extra work is needed.
 
@@ -376,12 +375,11 @@ The evdev autodetection is pretty nice; let's let it do the work, even if we nee
 
 Theoretically WiimoteGlue could keep track of virtual device outputs on a per-button basis rather than per-device, but that seems like a lot of extra complexity for little gain. If you have a valid use case for a single wiimote having both gamepad buttons and keyboard keys on it, it'll be considered.
 
-Maybe make it so mapping a button automagically switches that mode to prefer the keyboard or gamepad device might be work out well?
 
 ###Why not have WiimoteGlue talk to X directly to emulate the mouse when needed?
 
 * I don't want to deal with X code.
-* With Wayland potentially replacing X in the future, that sort of direct interaction doesn't seem wise. The Linux input system used by WiimoteGlue will likely be relatively stable .
+* With Wayland potentially replacing X in the future, that sort of direct interaction doesn't seem wise. The Linux input system used by WiimoteGlue will likely be relatively stable.
 
 ###Why does WiimoteGlue capture Wii U Pro controllers?
 
