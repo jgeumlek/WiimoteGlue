@@ -191,7 +191,7 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state* state);
 int wiimoteglue_epoll_init(int *epfd);
 int wiimoteglue_epoll_watch_monitor(int epfd, int mon_fd, void *monitor);
 int wiimoteglue_epoll_watch_wiimote(int epfd, struct wii_device *device);
-int wiimoteglue_epoll_watch_stdin(int epfd);
+int wiimoteglue_epoll_watch_stdin(struct wiimoteglue_state* state, int epfd);
 void wiimoteglue_epoll_loop(int epfd, struct wiimoteglue_state *state);
 
 int wiimoteglue_load_command_file(struct wiimoteglue_state *state, char *filename);

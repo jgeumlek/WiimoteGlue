@@ -13,10 +13,12 @@
 
 int wiimoteglue_udev_monitor_init(struct udev **udev, struct udev_monitor **monitor, int *mon_fd) {
 
-  *udev = udev_new();
-  if (!*udev) {
-    printf("error opening udev");
-    return -1;
+  if (*udev == NULL) {
+    *udev = udev_new();
+    if (*udev == NULL) {
+      printf("error opening udev");
+      return -1;
+    }
   }
 
 
@@ -30,6 +32,56 @@ int wiimoteglue_udev_monitor_init(struct udev **udev, struct udev_monitor **moni
 
   return 0;
 }
+
+int wiimoteglue_udev_enumerate(struct wiimoteglue_state *state, struct udev **udev) {
+    if (*udev == NULL) {
+    *udev = udev_new();
+    if (*udev == NULL) {
+      printf("error opening udev");
+      return -1;
+    }
+  }
+
+
+  struct udev_enumerate *enumerate;
+  struct udev_list_entry *devices, *dev_list_entry;
+  struct udev_device *dev;
+
+  enumerate = udev_enumerate_new(*udev);
+  udev_enumerate_add_match_subsystem(enumerate,"hid");
+
+  udev_enumerate_scan_devices(enumerate);
+  devices = udev_enumerate_get_list_entry(enumerate);
+
+  udev_list_entry_foreach(dev_list_entry, devices) {
+    const char* syspath;
+    const char* driver;
+    const char* subsystem;
+    const char* uniq; /*should be the bluetooth MAC*/
+    const char* path;
+    path = udev_list_entry_get_name(dev_list_entry);
+    dev = udev_device_new_from_syspath(*udev, path);
+    syspath = udev_device_get_syspath(dev);
+    driver = udev_device_get_driver(dev);
+    subsystem = udev_device_get_subsystem(dev);
+    uniq = udev_device_get_property_value(dev, "HID_UNIQ");
+
+
+    if (subsystem != NULL && strcmp(subsystem, "hid") == 0) {
+      if (driver != NULL && strcmp(driver,"wiimote") == 0) {
+	add_wii_device(state,syspath,uniq);
+      }
+    }
+
+    udev_device_unref(dev);
+
+  }
+
+  udev_enumerate_unref(enumerate);
+
+  return 0;
+}
+
 
 int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
   struct udev_device *dev;

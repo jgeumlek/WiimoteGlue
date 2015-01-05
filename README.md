@@ -44,7 +44,7 @@ The Linux kernel driver for wiimotes is pretty handy, but the extension controll
 ##Features
 
 * Creates synthetic virtual gamepads that work in most modern software that expect gamepads.
-* Supports extension controllers such as the nunchuk or classic controller.
+* Supports extension controllers such as the nunchuk or classic controller. Just plug and play!
 * Configurable at run-time button mappings to get that ideal control scheme.
 * Also grabs Wii U pro controllers and allows remapping buttons.
 * Dynamic control mappings that change when extensions are inserted or removed.
@@ -54,7 +54,7 @@ The Linux kernel driver for wiimotes is pretty handy, but the extension controll
 * Read in control mappings from files. Set up a file per game, and you can switch between them easily.
 * Uses the Linux gamepad API button defintions rather than ambiguous labels like "A","B","X","Y"  or "Button 0" for the virtual gamepad.
 * Virtual gamepads persist for as long as WiimoteGlue is running, so even software not supporting gamepad hotplugging can be oblivious to Wii remotes connecting/disconnecting.
-* Also creates a virtual keyboard/mouse device that can be mapped.
+* Can also map events to a keyboard or mouse, rather than a gamepad.
 * Assuming proper file permissions on input devices, this does not require super-user privileges.
 
 ##Example of Why You Might Use WiimoteGlue
@@ -117,14 +117,12 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Sometimes extensions aren't detected, especially when already inserted when a wiimote connects. Unplugging them and re-inserting generally fixes this.
 * Though the Wii U Pro supports changing the button mappings and axis mappings, it does not allow inverting the axes.
 * Since the Wii U Pro is already detected by SDL, WiimoteGlue leads to "duplicate" controllers.
-* Any wiimotes connected before starting WiimoteGlue will be ignored.
 * Keyboard/mouse emulation is not perfect. Expect changes in the interface.
 * Currently single-threaded, handling all input events across all controllers. May introduce latency?
 * Virtual gamepads don't change their axis sensitivities or deadzones when their input sources change. The deadzone ideal for a thumb stick might not be the ideal for a tilt control.
 * Code is messy as a personal project. Particularly, i18n was not a concern when writing it. Sorry.
 * Uses a udev monitor per wiimote despite xwiimote saying not to do that.
 * Wiimote buttons are still processed when a classic controller is present, despite duplicate buttons. The duplicate button events are mapped the same, and interleaved onto to the synthetic gamepad, but this generally isn't a huge problem.
-* Not really designed to handle multiple instances of WiimoteGlue running, mostly due to them grabbing the same wiimotes.
 * Virtual output devices aren't "cleared" when their input sources are removed. If you remap a button while it is held down (or an uncentered axis), the old mapping will be "frozen" to whatever input it had last.
 
 
@@ -140,7 +138,7 @@ You need read access to the various event devices created by the kernel driver. 
 
     KERNEL=="event*", DRIVERS=="wiimote", GROUP="<groupname>", MODE="0660"
 
-(where \<groupname\> is the name of some user group you've added yourself to.0
+(where \<groupname\> is the name of some user group you've added yourself to.)
 
 When rumble support is added, you'll need write access as well. (though only to the core wiimote and Wii U pro devices; nunchuks and classic controllers don't have rumble)
 

@@ -99,7 +99,7 @@ int open_uinput_gamepad_fd(char* uinput_path) {
    * So we just create a gamepad with all of them, even if unmapped.
    */
   static int abs[] = { ABS_X, ABS_Y, ABS_RX, ABS_RY};
-  static int key[] = { BTN_SOUTH, BTN_EAST, BTN_NORTH, BTN_WEST, BTN_SELECT, BTN_MODE, BTN_START, BTN_TL, BTN_TL2, BTN_TR, BTN_TR2, BTN_DPAD_DOWN, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP};
+  static int key[] = { BTN_SOUTH, BTN_EAST, BTN_NORTH, BTN_WEST, BTN_SELECT, BTN_MODE, BTN_START, BTN_TL, BTN_TL2, BTN_TR, BTN_TR2, BTN_DPAD_DOWN, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP,BTN_THUMBL, BTN_THUMBR};
   struct uinput_user_dev uidev;
   int fd;
   int i;
@@ -125,7 +125,7 @@ int open_uinput_gamepad_fd(char* uinput_path) {
   }
 
   ioctl(fd, UI_SET_EVBIT, EV_KEY);
-  for (i = 0; i < 15; i++) {
+  for (i = 0; i < 17; i++) {
     ioctl(fd, UI_SET_KEYBIT, key[i]);
   }
 

@@ -31,11 +31,11 @@ int wiimoteglue_epoll_watch_monitor(int epfd, int mon_fd, void *monitor) {
 
 }
 
-int wiimoteglue_epoll_watch_stdin(int epfd) {
+int wiimoteglue_epoll_watch_stdin(struct wiimoteglue_state* state, int epfd) {
   memset(&event, 0, sizeof(event));
 
   event.events = EPOLLIN | EPOLLPRI | EPOLLERR | EPOLLHUP;
-  event.data.ptr = NULL;
+  event.data.ptr = state;
 
   return epoll_ctl(epfd, EPOLL_CTL_ADD, 0, &event); //HACK magic constant
 }
@@ -61,7 +61,7 @@ void wiimoteglue_epoll_loop(int epfd, struct wiimoteglue_state *state) {
 	wiimoteglue_udev_handle_event(state);
 	printf("\n>>");
 	fflush(stdout);
-      } else if (events[i].data.ptr == NULL) {
+      } else if (events[i].data.ptr == state) {
 	//HANDLE USER INPUT
 	state->load_lines = 0;
 	wiimoteglue_handle_input(state,0);

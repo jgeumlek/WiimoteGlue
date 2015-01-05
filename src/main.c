@@ -45,7 +45,7 @@ int init_mappings(struct mode_mappings *maps, char* name);
 int handle_arguments(struct commandline_options *options, int argc, char *argv[]);
 
 int main(int argc, char *argv[]) {
-  struct udev *udev;
+  struct udev *udev = NULL;
   struct wiimoteglue_state state;
   KEEP_LOOPING = &state.keep_looping;
   memset(&state, 0, sizeof(state));
@@ -54,6 +54,8 @@ int main(int argc, char *argv[]) {
   int epfd;
   int ret;
   options.number_of_slots = -1; /*initialize so we know it has been set*/
+  options.monitor_for_new_wiimotes = 1; /*sensible default values*/
+  options.check_for_existing_wiimotes = 1;
   ret = handle_arguments(&options, argc, argv);
   if (ret == 1) {
     return 0; /*arguments just said to print out help or version info.*/
@@ -124,28 +126,28 @@ int main(int argc, char *argv[]) {
   state.dev_list.prev = &state.dev_list;
 
 
-  //Start a monitor? (ASSUME YES FOR NOW)
-  printf("Starting udev monitor...");
-  ret = wiimoteglue_udev_monitor_init(&udev, &state.monitor, &monitor_fd);
-  if (ret) {
-    printf("\nError in creating udev monitor. No additional controllers will be detected.");
+  if (options.monitor_for_new_wiimotes) {
+    printf("Starting udev monitor...");
+    ret = wiimoteglue_udev_monitor_init(&udev, &state.monitor, &monitor_fd);
+    if (ret) {
+      printf("\nError in creating udev monitor. No additional controllers will be detected.");
+    } else {
+      printf(" okay.\n");
+    }
   } else {
-    printf(" okay.\n");
+    printf("No monitor started; no new devices will be found.\n");
   }
 
+
+
   wiimoteglue_epoll_init(&epfd);
-  wiimoteglue_epoll_watch_monitor(epfd, monitor_fd, state.monitor);
-  wiimoteglue_epoll_watch_stdin(epfd);
+  if (options.monitor_for_new_wiimotes)
+    wiimoteglue_epoll_watch_monitor(epfd, monitor_fd, state.monitor);
+
+  wiimoteglue_epoll_watch_stdin(&state, epfd);
 
   state.epfd = epfd;
 
-  //Check for existing wiimotes? (ASSUME NO FOR NOW)
-  //Existing wiimotes mean our virtual slots won't
-  //have earlier device nodes, so programs expecting
-  //controllers may grab the wiimotes directly
-  //rather than our virtual ones.
-
-  printf("Any currently connected wiimotes will be ignored.\n");
 
   //Start forwarding input events.
 
@@ -163,8 +165,19 @@ int main(int argc, char *argv[]) {
     printf("\n");
   }
 
+  if (options.check_for_existing_wiimotes) {
+    printf("Looking for already connected devices...\n");
+    ret = wiimoteglue_udev_enumerate(&state, &udev);
+    if (ret) {
+      printf("\nError in udev enumeration. No existing controllers will be found.\n");
+    }
+  } else {
+    printf("Any currently connected wiimotes will be ignored.\n");
+  }
 
-  printf("\nWiimoteGlue is now running and waiting for Wiimotes.\nEnter \"help\" for available commands.\n>>");
+  if (options.monitor_for_new_wiimotes)
+    printf("\nWiimoteGlue is now running and waiting for Wiimotes.\n");
+  printf("Enter \"help\" for available commands.\n>>");
   fflush(stdout);
   wiimoteglue_epoll_loop(epfd, &state);
 
@@ -188,8 +201,11 @@ int main(int argc, char *argv[]) {
 
   free(state.slots);
 
-  udev_monitor_unref(state.monitor);
-  udev_unref(udev);
+  if (options.monitor_for_new_wiimotes)
+    udev_monitor_unref(state.monitor);
+
+  if (udev != NULL)
+    udev_unref(udev);
 
   return 0;
 }
@@ -210,6 +226,8 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      printf("  -l, --load-file <file>\tLoad the file at start-up\n");
      printf("  -n, --num-pads <number>\tNumber of fake gamepad slots to create\n");
      printf("      --uinput-path\t\tSpecify path to uinput\n");
+     printf("      --no-enumerate\t\tDon't enumerate connected devices\n");
+     printf("      --no-monitor\t\tDon't listen for new devices.\n");
      printf("      --ignore-pro\t\tIgnore Wii U Pro controllers\n");
      printf("      --no-set-leds\t\tDon't change controller LEDS\n");
      return 1;
@@ -270,8 +288,12 @@ int handle_arguments(struct commandline_options *options, int argc, char *argv[]
      argv++;
    } else if (strcmp("--ignore-pro",argv[0]) == 0) {
      options->ignore_pro = 1;
-   }else if (strcmp("--no-set-leds",argv[0]) == 0) {
+   } else if (strcmp("--no-set-leds",argv[0]) == 0) {
      options->no_set_leds = 1;
+   } else if (strcmp("--no-enumerate",argv[0]) == 0) {
+     options->check_for_existing_wiimotes = 0;
+   } else if (strcmp("--no-monitor",argv[0]) == 0) {
+     options->monitor_for_new_wiimotes = 0;
    } else {
      printf("Argument \"%s\" not recognized.\n",argv[0]);
      return -1;
