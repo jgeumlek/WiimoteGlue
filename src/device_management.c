@@ -18,7 +18,7 @@ int add_wii_device(struct wiimoteglue_state *state, char* syspath, const char* u
     return -1;
   xwii_iface_new(&wiidev,syspath);
   xwii_iface_watch(wiidev,true);
-  xwii_iface_open(wiidev,  XWII_IFACE_WRITABLE | (XWII_IFACE_ALL ^ XWII_IFACE_ACCEL ^ XWII_IFACE_IR));
+  xwii_iface_open(wiidev,  XWII_IFACE_WRITABLE | (XWII_IFACE_ALL ^ XWII_IFACE_ACCEL ^ XWII_IFACE_IR ^ XWII_IFACE_MOTION_PLUS));
   if (!(xwii_iface_available(wiidev) & (XWII_IFACE_CORE | XWII_IFACE_PRO_CONTROLLER | XWII_IFACE_BALANCE_BOARD))) {
     printf("Tried to add a non-wiimote device...\n");
     printf("Or we didn't have permission on the event devices?\n");
@@ -174,6 +174,21 @@ int close_wii_device(struct wiimoteglue_state* state, struct wii_device *dev) {
     return 0;
 }
 
+int set_device_specific_mappings(struct wii_device *dev, struct mode_mappings *maps) {
+  if (dev ==  NULL)
+    return -1;
+
+  if (dev->dev_specific_mappings != NULL)
+    mappings_unref(dev->dev_specific_mappings);
+
+  dev->dev_specific_mappings = maps;
+
+  if (maps != NULL)
+    mappings_ref(maps);
+
+  return 0;
+
+}
 
 int store_led_state(struct wiimoteglue_state* state, struct wii_device *dev) {
   if (dev == NULL)

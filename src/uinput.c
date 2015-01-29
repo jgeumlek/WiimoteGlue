@@ -82,6 +82,7 @@ int wiimoteglue_uinput_close(int num_slots, struct virtual_controller slots[]) {
   for (i = 0; i <= num_slots; i++) {
     if (ioctl(slots[i].uinput_fd, UI_DEV_DESTROY) < 0) {
       printf("Error destroying uinput device.\n");
+      perror("uinput destroy");
     }
 
     free(slots[i].slot_name);

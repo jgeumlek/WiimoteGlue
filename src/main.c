@@ -113,12 +113,13 @@ int main(int argc, char *argv[]) {
 
   state.virtual_keyboardmouse_fd = state.slots[0].uinput_fd;
 
+  state.head_map.next = &state.head_map;
+  state.head_map.prev = &state.head_map;
   init_gamepad_mappings(&state.head_map.maps,"gamepad");
 
-  struct mode_mappings keymouse;
-  init_keyboardmouse_mappings(&keymouse,"keyboardmouse");
-
-  set_slot_specific_mappings(&state.slots[0],&keymouse);
+  struct map_list *keymouse = create_mappings(&state,"keyboardmouse");
+  init_keyboardmouse_mappings(&keymouse->maps);
+  set_slot_specific_mappings(&state.slots[0],&keymouse->maps);
 
 
   /*The device llist is cyclic*/
@@ -138,6 +139,8 @@ int main(int argc, char *argv[]) {
     printf("No monitor started; no new devices will be found.\n");
   }
 
+
+  printf("KB name: %s\n",keymouse->maps.name);
 
 
   wiimoteglue_epoll_init(&epfd);
@@ -186,6 +189,8 @@ int main(int argc, char *argv[]) {
   printf("Shutting down...\n");
 
 
+  for (i = 0; i <= state.num_slots; i++)
+    change_slot_type(&state,&state.slots[i],SLOT_GAMEPAD);
 
   struct wii_device_list *list_node = state.dev_list.next;
   while (list_node != &state.dev_list && list_node != NULL) {
@@ -197,9 +202,21 @@ int main(int argc, char *argv[]) {
     list_node = next;
   }
 
+  struct map_list *mlist_node;
+  mlist_node = state.head_map.next;
+  while (mlist_node != NULL && mlist_node != &state.head_map) {
+    struct map_list *next = mlist_node->next;
+    free(mlist_node->maps.name);
+    free(mlist_node);
+    mlist_node = next;
+  }
+
+
+
   wiimoteglue_uinput_close(state.num_slots, state.slots);
 
   free(state.slots);
+
 
   if (options.monitor_for_new_wiimotes)
     udev_monitor_unref(state.monitor);

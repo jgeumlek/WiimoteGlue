@@ -162,21 +162,26 @@ int change_slot_type(struct wiimoteglue_state* state, struct virtual_controller 
   if (type == SLOT_GAMEPAD) {
     slot->uinput_fd = slot->gamepad_fd;
     slot->type = SLOT_GAMEPAD;
-    /*For now, we'll abuse the slot's personal map
-     *to make the keyboard mode more useful.
-     *This behavior will change.
+
+    /*Try to do the right thing:
+     *If it was the keyboardmouse map, unset it.
+     *otherwise, maintain the specific mapping.
      */
-    printf("Switched slot's mapping to the gamepad mapping.\n");
-    slot->slot_specific_mappings = NULL;
+    if (slot->slot_specific_mappings == state->slots[0].slot_specific_mappings) {
+      printf("Switched slot's mapping to the gamepad mapping.\n");
+      slot->slot_specific_mappings = NULL;
+    }
     return 0;
   }
 
   if (type == SLOT_KEYBOARDMOUSE) {
     slot->uinput_fd = slot->keyboardmouse_fd;
     slot->type = SLOT_KEYBOARDMOUSE;
-    printf("Switched slot's mapping to the keyboardmouse mapping.\n");
-
-    slot->slot_specific_mappings = state->slots[0].slot_specific_mappings;
+    /*If no specific map set, go ahead and use the keyboardmouse one.*/
+    if (slot->slot_specific_mappings == NULL) {
+      printf("Switched slot's mapping to the keyboardmouse mapping.\n");
+      slot->slot_specific_mappings = state->slots[0].slot_specific_mappings;
+    }
     return 0;
   }
 
@@ -188,7 +193,20 @@ int set_slot_specific_mappings(struct virtual_controller *slot, struct mode_mapp
   if (slot ==  NULL)
     return -1;
 
+  /*The keyboardmouse slot has its mapping set exactly once*/
+  if (slot->slot_number == 0 && slot->slot_specific_mappings != NULL)
+    return -2;
+
+
+  if (slot->slot_specific_mappings != NULL)
+    mappings_unref(slot->slot_specific_mappings);
+
   slot->slot_specific_mappings = maps;
+
+  if (maps != NULL)
+    mappings_ref(maps);
+
+  return 0;
 
 }
 

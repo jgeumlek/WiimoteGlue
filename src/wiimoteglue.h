@@ -4,11 +4,8 @@
 #include <xwiimote.h>
 #include <libudev.h>
 
-#define WIIMOTEGLUE_VERSION "1.01.wip"
-/*Version string should change if
- *backwards compatibility is broken.
- *Otherwise, no guarantees.
- */
+#define WIIMOTEGLUE_VERSION "1.02.00"
+
 
 #define ABS_LIMIT 32767
 #define TILT_LIMIT 80
@@ -206,6 +203,7 @@ struct virtual_controller* lookup_slot(struct wiimoteglue_state* state, char* na
 int wiimoteglue_compute_all_device_maps(struct wiimoteglue_state* state, struct wii_device_list *devlist);
 int compute_device_map(struct wiimoteglue_state* state, struct wii_device *devlist);
 struct mode_mappings* lookup_mappings(struct wiimoteglue_state* state, char* map_name);
+struct map_list* create_mappings(struct wiimoteglue_state *state, char *name);
 
 int * get_input_key(char *key_name, int button_map[]);
 int * get_input_axis(char *axis_name, struct event_map *map);

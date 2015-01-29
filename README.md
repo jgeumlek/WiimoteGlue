@@ -101,23 +101,19 @@ See https://wiki.archlinux.org/index.php/XWiimote for more info on connecting wi
 * Improve the accelerometer/infared/balance board processing
 * Add a "waggle button" that is triggered when the wiimote or nunchuk are shaken.
 * Add a mode for the balance board that modulates an axis (or axes?) by walking in place.
-* Add more commandline arguments for more options
 * Add in rumble support.
 * Allow buttons to be mapped to axes, and vice versa.
 * Improve the control mapping files to be less cumbersome.
 * Way off: add in a GUI or interface for controlling the driver outside of the the driver's STDIN. System tray icon?
 * A means of calibrating the axes?
-* A reasonable way to let separate controllers have separate control mappings while not making extra work when the same mapping is wanted on all.
 * Clean and document the code in general.
 * A way to store device aliases based on their unique bluetooth addresses.
 
 ##Known Issues
 
-* Though each controller can be in a different mode depending on its extension, there are just two mappings for each mode: gamepad or keyboard.
 * Sometimes extensions aren't detected, especially when already inserted when a wiimote connects. Unplugging them and re-inserting generally fixes this.
 * Though the Wii U Pro supports changing the button mappings and axis mappings, it does not allow inverting the axes.
 * Since the Wii U Pro is already detected by SDL, WiimoteGlue leads to "duplicate" controllers.
-* Keyboard/mouse emulation is not perfect. Expect changes in the interface.
 * Currently single-threaded, handling all input events across all controllers. May introduce latency?
 * Virtual gamepads don't change their axis sensitivities or deadzones when their input sources change. The deadzone ideal for a thumb stick might not be the ideal for a tilt control.
 * Code is messy as a personal project. Particularly, i18n was not a concern when writing it. Sorry.
@@ -138,7 +134,7 @@ You need read access to the various event devices created by the kernel driver. 
 
     KERNEL=="event*", DRIVERS=="wiimote", GROUP="<groupname>", MODE="0660"
 
-(where \<groupname\> is the name of some user group you've added yourself to.)
+(where \<groupname\> is the name of some user group you've added yourself to. "input" might be a reasonable choice already in use by your system)
 
 When rumble support is added, you'll need write access as well. (though only to the core wiimote and Wii U pro devices; nunchuks and classic controllers don't have rumble)
 
@@ -146,7 +142,49 @@ When LED changing is added, you'll also need write access to the LED brightness 
 
     SUBSYSTEM=="leds", ACTION=="add", DRIVERS=="wiimote", RUN+="/bin/sh -c 'chgrp <groupname> /sys%p/brightness'", RUN+="/bin/sh -c 'chmod g+w /sys%p/brightness'"
 
-seems to be working for me, but there is probably a better way to write this udev rule.
+seems to be working for me. Note that both of these rules are present in the xwiimote repo, where they use the group "input". Further, recent versions of systemd have added a udev rule for all input event devices to be owned by the "input" group (however the LEDs still need the above rule).
+
+###How do I connect a wiimote?
+
+That is outside the scope of WiimoteGlue. Your bluetooth system handles this. This software assumes your bluetooth stack and kernel wiimote driver are already working and usable.
+
+See https://wiki.archlinux.org/index.php/XWiimote for more information on connecting wiimotes.
+
+Note that this uses xwiimote and the kernel driver, not one of the various wiimote libraries like cwiid that do handle connections, so the info on https://wiki.archlinux.org/index.php/Wiimote is not applicable. To use Wiimoteglue, use XWiimote; do not use cwiid and wminput.
+
+Aside from seeing the device entries created by the kernel driver, a successful connection can be verified by the Wiimote LEDs switching to having just the left-most one lit. Prior to that, all 4 LEDs will be blinking while the wiimote is in sync mode.
+
+I have had some confusing experience of the wiimote connections sometimes consistently failing then magically working when I try later. I've also seen an unrelated issue when repeatedly and quickly disconnecting and reconnecting a controller. These are once again, outside the scope of WiimoteGlue. Some of this might be my bluetooth hardware being flakey.
+
+In the former case, the bluetooth connection fails. In the latter case, the connection succeeds, but the no kernel devices are created. It seemed like the wiimote was connected and was on, but all 4 of its LEDs were off since the kernel driver never set them.
+
+###Mapping(s)? Modes? I'm confused.
+
+In WiimoteGlue, a *mapping* is says what output events a certain Wiimote input event should send. A *mapping* has 3 *modes*: wiimote, nunchuk, and classic. Each *mode* describes a separate set of output bindings, and a wiimote chooses its *mode* based on what extensions, if any, are currently connected. Even though two devices may be using the same *mapping*, pressing the same button on each of them can have different effects depending on what *mode* each device is in.
+
+WiimoteGlue starts with two *mappings* defined: "gamepad" and "keyboardmouse", and each has their own 3 *modes*. WiimoteGlue will create by default 4 virtual gamepad slots: "1", "2", "3", and "4". There is also an extra slot named "keyboardmouse," and naturally it uses the "keyboardmouse" *mapping*.
+
+When you issue a
+
+    map <mapping name> <mode> <input event> <output event>
+
+command and omit the *mapping* name, the "gamepad" *mapping* is assumed.
+
+A slot can be assigned its own *mapping*, in which case it will be used instead of the default "gamepad" *mapping*. Further, a device can be assigned a personal *mapping*, and it will be used instead of either the default "gamepad" or the slot specific mapping.
+
+    # Set a slot's specific mapping
+    slot <slot name> mapping <mapping name>
+    # Set a device's specific mapping
+    device <dev id|address> mapping <mapping name>
+
+###Slot types? What are those?
+
+WiimoteGlue keeps separate virtual devices for gamepad and keyboard/mouse events, and you need to tell a slot what virtual device to use. Events sent to a device of the wrong type will be ignored.
+
+    slot <slot name> type keyboardmouse
+    slot <slot name> type gamepad
+
+Will change the type of a slot. These commands also work if you omit the word "type".
 
 
 ###North, south, east, west? What are those? My "A" button isn't acting like an "A" button.
@@ -189,58 +227,24 @@ Also note that the infared and accelerometer readings aren't smoothed at all, so
 
 ###I mapped buttons to the keyboard/mouse, but they aren't doing anything?
 
-First, note that you need to specify you wish to change the keyboard mapping instead of the gamepad one.
+Please check the following is true:
 
-    map keyboardmouse <mode> <wiimote input event> <virtual output event>
+* Your device is assigned to slot with the "keyboardmouse" type, rather than the type "gamepad". "gamepad" slots ignore keyboard and mouse events.
+* You updated the actual mapping (and mode of that mapping) in use by the device.
 
-where "\<mode\>" is one of the extension modes: wiimote, nunchuk, or classic.
+As a reminder, WiimoteGlue also starts with two named mappings: "gamepad" and "keyboardmouse". A mapping is set via
 
-"keyboardmouse" names a mapping, and a mapping has all three modes. When no mapping name is given, the "map" command assumes you meant the "gamepad" mapping.
+    map <mapping name> <mode> <wiimote input event> <output event>
 
-Secondly, any keyboard or mouse events sent to a virtual gamepad are ignored. You'll need to do one of the following:
+and if no mapping name is given, "gamepad" is implied.
 
-    assign <device name> keyboardmouse
+WiimoteGlue starts with one special "keyboardmouse" slot (of type "keyboardmouse") in addition to the default slots 1, 2, etc. which are of type "gamepad."
 
-or
+    slot <slot name> <slot type>
 
-    slot 1 keyboardmouse
+will change the type of a slot.
 
-
-The first takes a particular device (like a wiimote) and assigns it to the keyboard. The second one takes virtual gamepad slot #1 and switches it to point to the virtual keyboard.
-
-To undo this,
-
-    assign <device name> 1
-
-or
-
-    slot 1 gamepad
-
-depending on what you changed above.
-
-Use
-
-    list
-
-to see all device names, and the "1" can be replaced by "2","3", or "4" to affect the other slots instead.
-
-Note that each mode still has exactly one control mapping, regardless of whether the devices are mapped to a fake keyboard or fake gamepad. Since the fake keyboard ignores gamepad events and gamepads ignore keyboard events, one device can't simultaneously send keyboard/mouse and gamepad events.
-
-Changing the slot rather the device to point to a keyboard is nice since it means future devices connected to the slot will automatically point to the keyboard.
-
-###How do I connect a wiimote?
-
-That is outside the scope of WiimoteGlue. Your bluetooth system handles this. This software assumes your bluetooth stack and kernel wiimote driver are already working and usable.
-
-See https://wiki.archlinux.org/index.php/XWiimote for more information on connecting wiimotes.
-
-Note that this uses xwiimote and the kernel driver, not one of the various wiimote libraries like cwiid that do handle connections, so the info on https://wiki.archlinux.org/index.php/Wiimote is not applicable. To use Wiimoteglue, use XWiimote; do not use cwiid and wminput.
-
-Aside from seeing the device entries created by the kernel driver, a successful connection can be verified by the Wiimote LEDs switching to having just the left-most one lit. Prior to that, all 4 LEDs will be blinking while the wiimote is in sync mode.
-
-I have had some confusing experience of the wiimote connections sometimes consistently failing then magically working when I try later. I've also seen an unrelated issue when repeatedly and quickly disconnecting and reconnecting a controller. These are once again, outside the scope of WiimoteGlue. Some of this might be my bluetooth hardware being flakey.
-
-In the former case, the bluetooth connection fails. In the latter case, the connection succeeds, but the no kernel devices are created. It seemed like the wiimote was connected and was on, but all 4 of its LEDs were off since the kernel driver never set them.
+Finally, note that the keyboard and mouse slot is set to use the keyboard and mouse mapping. If a slot has no specific mapping set, changing the type will also change the slot's mapping to the appropriate default.
 
 ###My classic controller d-pad directions are acting like arrow keys?
 
@@ -356,7 +360,7 @@ Unsupported. It doesn't use bluetooth, but wifi to communicate. It is unlikely t
 An an aside: Check out libDRC for some existing work on using the Wii U Gamepad under Linux. (It is rough at the the moment, and held back by the need to expose wifi TSF values to userspace, and not all wifi hardware handles TSF sufficiently for the gamepad.) As far I'm aware, once it is working, libDRC can handle the buttons on the Wii U Gamepad easily; the main challenge is streaming images to the screen in a way that the Gamepad will accept.
 
 
-###Why not use the kernel driver itself, or the exisitng X11 driver xf86-input-xwiimote?
+###Why not use the kernel driver itself, or the existing X11 driver xf86-input-xwiimote?
 
 As noted above, the kernel driver makes separate devices for different features/extensions of the wiimote, making them all but unusable in most games. The classic controller has legacy mapping issues leading to it being ignored by SDL. With the kernel driver alone, only the Wii U Pro controller is useful.
 

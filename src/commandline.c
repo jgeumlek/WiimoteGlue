@@ -82,8 +82,12 @@ char * getwholeline(int file) {
 void process_command(struct wiimoteglue_state *state, char *args[]);
 void update_mapping(struct wiimoteglue_state *state, struct mode_mappings* maps, char *mode, char *in, char *out, char *opt);
 void toggle_setting(struct wiimoteglue_state *state, struct mode_mappings* maps, int active, char *mode, char *setting, char *opt);
-int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting);
+int slot_command(struct wiimoteglue_state *state, char *slotname, char *setting, char *value);
+int list_objects(struct wiimoteglue_state *state, char *type, char *option);
 int list_devices(struct wii_device_list *devlist, char *option);
+int list_slots(struct wiimoteglue_state *state, char *option);
+int list_mappings(struct wiimoteglue_state *state, char *option);
+
 struct wii_device* lookup_device(struct wii_device_list *devlist, char *name);
 int * get_input_key(char *key_name, int button_map[]);
 int * get_input_axis(char *axis_name, struct event_map *map);
@@ -143,11 +147,13 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
   if (strcmp(args[0],"help") == 0) {
     printf("The following commands are recognized:\n");
     printf("\thelp - show this message\n");
-    printf("\tmap - change a button/axis mapping in one of the modes\n");
+    printf("\tmap - change a button/axis mapping\n");
     printf("\tenable/disable - control extra controller features\n");
-    printf("\tlist - list all open devices\n");
+    printf("\tlist [type] - list various WiimoteGlue structures\n");
     printf("\tassign - assign a device to a virtual slot\n");
-    printf("\tslot - set a slot to be a gamepad or a keyboard/mouse\n");
+    printf("\tslot - slot specific commands\n");
+    printf("\tdevice - device specific commands\n");
+    printf("\tmapping - mapping specific commands\n");
     printf("\tload - opens a file and runs the commands inside\n");
     printf("\tquit - close down WiimoteGlue\n");
     printf("\tmodes - show recognized keywords for controller modes\n");
@@ -262,16 +268,31 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
     return;
   }
   if (strcmp(args[0],"slot") == 0) {
-    change_slot(state,args[1],args[2]);
+    slot_command(state,args[1],args[2],args[3]);
     return;
   }
   if (strcmp(args[0],"assign") == 0) {
-     assign_device(state,args[1],args[2]);
-     compute_device_map(state,state->dev_list.dev);
-     return;
+    assign_device(state,args[1],args[2]);
+    return;
   }
   if (strcmp(args[0],"list") == 0) {
-    list_devices(&state->dev_list,args[1]);
+    list_objects(state,args[1],args[2]);
+    return;
+  }
+  if (strcmp(args[0],"new") == 0) {
+    create_user_item(state,args[1],args[2]);
+    return;
+  }
+  if (strcmp(args[0],"delete") == 0) {
+    delete_user_item(state,args[1],args[2]);
+    return;
+  }
+  if (strcmp(args[0],"mapping") == 0) {
+    mapping_command(state,args[1],args[2],args[3],args[4]);
+    return;
+  }
+  if (strcmp(args[0],"device") == 0) {
+    device_command(state,args[1],args[2],args[3],args[4]);
     return;
   }
 
@@ -396,7 +417,7 @@ void toggle_setting(struct wiimoteglue_state *state, struct mode_mappings* maps,
   }
 
   printf("Feature \"%s\" not recognized.\n",setting);
-  printf("usage: <enable|disable>  [gamepad|keyboardmouse] <mode> <feature> [option]\n");
+  printf("usage: <enable|disable>  [mapname] <mode> <feature> [option]\n");
 }
 
 
@@ -429,9 +450,9 @@ int wiimoteglue_load_command_file(struct wiimoteglue_state *state, char *filenam
 
 }
 
-int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting) {
+int slot_command(struct wiimoteglue_state* state, char* slotname, char* setting, char* value) {
   if (slotname == NULL || setting == NULL) {
-    printf("usage: slot <slotnumber> <gamepad|keyboardmouse>\n");
+    printf("usage: slot <slotnumber> <setting name> [value]\n");
     return -1;
   }
 
@@ -450,39 +471,67 @@ int change_slot(struct wiimoteglue_state *state, char *slotname, char *setting) 
     return -1;
   }
 
-  if (strcmp(setting, "gamepad") == 0) {
-    ret = change_slot_type(state,slot,SLOT_GAMEPAD);
-    if (ret >= 0) {
-      printf("Setting slot %s to be a virtual gamepad.\n",slot->slot_name);
-    } else {
-      printf("Could not change slot %s's type.\n",slot->slot_name);
-      return -1;
-    }
-    wiimoteglue_compute_all_device_maps(state,&slot->dev_list);
-    return 0;
-  }
+  if (strcmp(setting, "gamepad") == 0)
+    return slot_command(state,slotname,"type","gamepad");
 
-  if (strcmp(setting, "keyboardmouse") == 0) {
-    ret = change_slot_type(state,slot,SLOT_KEYBOARDMOUSE);
-    if (ret >= 0) {
-      printf("Setting slot %s to be a virtual keyboard/mouse combo.\n",slot->slot_name);
-    } else {
-      printf("Could not change slot %s's type.\n",slot->slot_name);
-      return -1;
-    }
-    wiimoteglue_compute_all_device_maps(state,&slot->dev_list);
-    return 0;
-  }
+  if (strcmp(setting, "keyboardmouse") == 0)
+    return slot_command(state,slotname,"type","keyboardmouse");
 
   if (strcmp(setting, "list") == 0) {
     list_devices(&slot->dev_list,NULL);
     return 0;
   }
 
+  if (strcmp(setting, "mapping") == 0) {
+    if (value == NULL) {
+      printf("Missing mapping name.\n");
+      return -1;
+    }
+    struct mode_mappings* maps = lookup_mappings(state,value);
+    if (maps == NULL && strcmp(value,"none") != 0) {
+      printf("Mapping named \"%s\" not found.\n",value);
+      return -1;
+    }
+    set_slot_specific_mappings(slot,maps);
+    wiimoteglue_compute_all_device_maps(state,&slot->dev_list);
+    return 0;
+
+
+  }
+
+  if (strcmp(setting, "type") == 0) {
+    if (value == NULL) {
+      printf("Missing slot type value. \n(Either \"gamepad\" or \"keyboardmouse\");\n");
+      return -1;
+    }
+    int slot_type = -1;
+    if (strcmp(value, "gamepad") == 0)
+      slot_type = SLOT_GAMEPAD;
+    if (strcmp(value, "keyboardmouse") == 0)
+      slot_type = SLOT_KEYBOARDMOUSE;
+
+    if (slot_type == -1) {
+      printf("\"%s\" was not a slot type.\n(Either \"gamepad\" or \"keyboardmouse\")\n",value);
+      return -1;
+    }
+
+    ret = change_slot_type(state,slot,slot_type);
+    if (ret >= 0) {
+      printf("Switched the slot %s's virtual device type.\n",slot->slot_name);
+    } else {
+      printf("Could not change slot %s's type.\n",slot->slot_name);
+      return -1;
+    }
+    wiimoteglue_compute_all_device_maps(state,&slot->dev_list);
+    return 0;
+
+  }
+
+
 
 
   printf("\'%s\' was not a recognized slot command.\n",setting);
-  printf("(try \"gamepad\" or \"keyboardmouse\")\n");
+  printf("(\"type\",\"mapping\", and \"list\" are choices)\n");
 
   return -1;
 }
@@ -530,8 +579,176 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
 
 }
 
+int device_command(struct wiimoteglue_state *state, char *devname, char *command, char *value) {
+  if (devname == NULL || command == NULL || value == NULL || strcmp(command,"mapping") != 0) {
+    printf("Currently only \"device <devname> mapping <mapname>\" is supported.\n");
+    return -1;
+  }
+
+  struct wii_device *dev = lookup_device(&state->dev_list,devname);
+  if (dev == NULL) {
+    printf("Could not find device \"%s\"\n",devname);
+    return -1;
+  }
+
+  if (strcmp(command,"mapping") == 0) {
+    struct mode_mappings *maps = lookup_mappings(state,value);
+    if (maps == NULL && strcmp(value,"none") != 0) {
+      printf("Could not find mapping \"%s\"\n",value);
+      return -1;
+    }
+
+    set_device_specific_mappings(dev,maps);
+    return 0;
+  }
 
 
+  return 0;
+}
+
+int mapping_command(struct wiimoteglue_state *state, char *mapname, char *command, char *value) {
+  if (mapname == NULL || command == NULL || value == NULL || strcmp(command,"copyfrom") != 0) {
+    printf("Currently only \"mapping <mapname> copyfrom <mapname>\" is supported.\n");
+    return -1;
+  }
+
+  struct mode_mappings *maps = lookup_mappings(state,mapname);
+  if (maps == NULL) {
+    printf("Could not find mapping \"%s\"\n",mapname);
+    return -1;
+  }
+
+  if (strcmp(command,"copyfrom") == 0) {
+    struct mode_mappings *mapsrc = lookup_mappings(state,value);
+    if (mapsrc == NULL) {
+      printf("Could not find mapping \"%s\"\n",value);
+      return -1;
+    }
+
+    copy_mappings(maps,mapsrc);
+    return 0;
+  }
+
+
+  return 0;
+}
+
+int list_objects(struct wiimoteglue_state *state, char *type, char *option) {
+  if (type == NULL) {
+    printf("Slots:\n");
+    list_slots(state,NULL);
+    printf("\nMappings:\n");
+    list_mappings(state,NULL);
+    printf("\nDevices:\n");
+    list_devices(&state->dev_list,NULL);
+    return;
+  }
+
+  if (strcmp(type,"devices") == 0)
+    return list_devices(&state->dev_list,option);
+
+  if (strcmp(type,"slots") == 0)
+    return list_slots(state,option);
+
+  if (strcmp(type,"mappings") == 0)
+    return list_mappings(state,option);
+
+  printf("\"%s\" not recognized.\n",type);
+  printf("Valid list types are \"devices\", \"slots\", and \"mappings\"\n");
+  return -1;
+
+
+}
+
+void display_mapping(struct mode_mappings *maps) {
+  /*This will be more useful
+   *when there is more info to show about a map.
+   */
+  printf("- %s\n",maps->name);
+  if (maps->reference_count > 1)
+    printf("\t%d devices/slots using this as their specific mapping\n",maps->reference_count-1);
+}
+
+int list_mappings(struct wiimoteglue_state *state, char *option) {
+  struct map_list *list_node = &state->head_map;
+  display_mapping(&list_node->maps);
+  list_node = list_node->next;
+
+  for (;*KEEP_LOOPING && list_node != NULL && list_node != &state->head_map; list_node = list_node->next) {
+    display_mapping(&list_node->maps);
+  }
+  return 0;
+}
+
+int list_slots(struct wiimoteglue_state *state, char *option) {
+  int i;
+  for (i = 0; i <= state->num_slots; i++) {
+    struct virtual_controller *slot = &state->slots[i];
+    printf("- %s:\n",slot->slot_name);
+    if (slot->has_wiimote)
+      printf("\tcontrollers: %d\n",slot->has_wiimote);
+    if (slot->has_board)
+      printf("\tboards: %d\n",slot->has_board);
+    if (slot->slot_specific_mappings != NULL)
+      printf("\tspecific mapping: %s\n",slot->slot_specific_mappings->name);
+  }
+
+  return 0;
+}
+
+int create_user_item(struct wiimoteglue_state *state, char *type, char *name) {
+  if (type == NULL || strcmp(type,"mapping") != 0) {
+    printf("Currently only \"new mapping <mapname>\" is supported");
+    return -1;
+  }
+
+  if (name == NULL) {
+    printf("A name for the new mapping is required.");
+    return -1;
+  }
+
+  if (strncmp(name,"dev",3) == 0) {
+    printf("Cannot create something that conflicts with device naming.\n");
+    return -1;
+  }
+
+  if (mode_name_check(name) >= 0) {
+    printf("Cannot create something that conflicts with a mode name.\n");
+    return -1;
+  }
+
+  if (lookup_mappings(state,name) != NULL) {
+    printf("A mapping already exists with that name.");
+    return -1;
+  }
+
+  if (lookup_slot(state,name) != NULL) {
+    printf("Cannot create something that conflicts with a slot name\n");
+    return -1;
+  }
+
+  create_mappings(state,name);
+  return 0;
+}
+
+int delete_user_item(struct wiimoteglue_state *state, char *type, char *name) {
+  if (type == NULL || strcmp(type,"mapping") != 0) {
+    printf("Currently only \"delete mapping <mapname>\" is supported");
+    return -1;
+  }
+
+  if (name == NULL) {
+    printf("A name for the mapping to delete is required.");
+  }
+
+  struct mode_mappings *maps = lookup_mappings(state,name);
+  if (maps == NULL) {
+    printf("No mapping exists with that name.");
+    return -1;
+  }
+
+  return forget_mapping(state,maps);
+}
 
 int list_devices(struct wii_device_list *devlist, char *option) {
   if (devlist == NULL) {
@@ -557,6 +774,9 @@ int list_devices(struct wii_device_list *devlist, char *option) {
 
       printf("\n- %s (%s)\n",dev->id,dev->bluetooth_addr);
       printf("\t%s\n",type);
+      if (dev->dev_specific_mappings != NULL) {
+          printf("\tDevice specific mapping: %s\n",dev->dev_specific_mappings->name);
+      }
 
       if (dev->slot != NULL) {
 	printf("\tAssigned to slot %s\n",dev->slot->slot_name);
