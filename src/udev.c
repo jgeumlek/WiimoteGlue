@@ -9,7 +9,7 @@
  *
  */
 
-
+struct wii_device * lookup_syspath(struct wii_device_list *devlist, char *syspath);
 
 int wiimoteglue_udev_monitor_init(struct udev **udev, struct udev_monitor **monitor, int *mon_fd) {
 
@@ -101,6 +101,24 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
 	}
       }
     }
+    
+    if (strcmp(action,"remove") == 0) {
+      
+      if (subsystem != NULL && strcmp(subsystem, "hid") == 0) {
+	
+        char* syspath = udev_device_get_syspath(dev);
+        struct wii_device *wiidev = lookup_syspath(&state->dev_list,syspath);
+        if (wiidev != NULL) {
+          remove_device_from_slot(wiidev);
+          udev_device_unref(wiidev->udev);
+          wiidev->udev = NULL;
+          printf("Device %s disconnected from system.\n",wiidev->id);
+          close_wii_device(state,wiidev);
+        }
+	
+      }
+    }
+    
     //The controller interface will detect its removal.
     //Trying to use the udev remove event would require
     //searching the device list to find the matching entry.
@@ -115,4 +133,33 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
   udev_device_unref(dev);
 
   return 0;
+}
+
+
+struct wii_device * lookup_syspath(struct wii_device_list *devlist, char *syspath) {
+
+  if (devlist == NULL) {
+    return NULL;
+  }
+
+  struct wii_device_list* list_node = devlist->next;
+
+  while (*KEEP_LOOPING && list_node != devlist && list_node != NULL) {
+
+
+    if (list_node->dev != NULL) {
+      if (list_node->dev->udev != NULL) {
+        char* devpath = udev_device_get_syspath(list_node->dev->udev);
+      
+        if (strncmp(syspath,devpath,2048) == 0)
+          return list_node->dev;
+        
+      }
+
+      list_node = list_node->next;
+    }
+  }
+
+
+  return NULL;
 }

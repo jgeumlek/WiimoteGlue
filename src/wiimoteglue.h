@@ -75,7 +75,7 @@ struct wii_device {
   
   struct udev_device* udev;
 
-  enum DEVICE_TYPE { REMOTE, BALANCE, PRO} type;
+  enum DEVICE_TYPE { REMOTE, BALANCE, PRO, UNKNOWN} type;
 
   /*At any time, a device should be in at most
    *two lists: the main list of all devices,

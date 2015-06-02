@@ -154,6 +154,7 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
     printf("\tslot - slot specific commands\n");
     printf("\tdevice - device specific commands\n");
     printf("\tmapping - mapping specific commands\n");
+    printf("\tnew mapping <name> - create a new named mapping\n");
     printf("\tload - opens a file and runs the commands inside\n");
     printf("\tquit - close down WiimoteGlue\n");
     printf("\tmodes - show recognized keywords for controller modes\n");
@@ -453,6 +454,7 @@ int wiimoteglue_load_command_file(struct wiimoteglue_state *state, char *filenam
 int slot_command(struct wiimoteglue_state* state, char* slotname, char* setting, char* value) {
   if (slotname == NULL || setting == NULL) {
     printf("usage: slot <slotnumber> <setting name> [value]\n");
+    printf("\tPossible settings: type, list, mapping, gamepad, keyboardmouse\n");
     return -1;
   }
 
@@ -586,13 +588,14 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
 }
 
 int device_command(struct wiimoteglue_state *state, char *devname, char *command, char *value) {
-  if (devname == NULL || command == NULL || value == NULL || strcmp(command,"mapping") != 0) {
-    printf("Currently only \"device <devname> mapping <mapname>\" is supported.\n");
+  if (devname == NULL || command == NULL || value == NULL) {
+    printf("\"device <devname> mapping <mapname>\"\n");
+    printf("\"device <name|addr> rename <name>\"\n");
     return -1;
   }
 
   struct wii_device *dev = lookup_device(&state->dev_list,devname);
-  if (dev == NULL) {
+  if (dev == NULL && strcmp(command,"rename") != 0) {
     printf("Could not find device \"%s\"\n",devname);
     return -1;
   }
@@ -607,6 +610,30 @@ int device_command(struct wiimoteglue_state *state, char *devname, char *command
     set_device_specific_mappings(dev,maps);
     return 0;
   }
+  
+  if (strcmp(command,"rename") == 0) {
+    if (memchr(value,'\0',WG_MAX_NAME_SIZE) == NULL) {
+      printf("New name is too long. Must be %d characters or less.\n",WG_MAX_NAME_SIZE-1);
+      return -1;
+    }
+    if (strchr(value,':') != NULL || strchr(value,' ') != NULL) {
+      printf("Invalid name. \":\" and \" \" are forbidden.\n");
+      return -1;
+    }
+    
+    if (dev == NULL) {
+      if (strchr(devname,':') == NULL || strchr(devname,' ') != NULL) {
+        printf("Device %s not found, and that is not a possible unique device address.\n",devname);
+        return -1;
+      }
+      struct wii_device_list* node = new_wii_device(state,devname);
+      dev = node->dev;
+    }
+    
+    strncpy(dev->id, value, WG_MAX_NAME_SIZE);
+    return 0;
+  }
+
 
 
   return 0;
@@ -765,7 +792,7 @@ int list_devices(struct wii_device_list *devlist, char *option) {
   static char* wiimote = "Wii Remote";
   static char* pro = "Wii U Pro Controller";
   static char* board = "Balance Board";
-  static char* unknown = "Unknown Device Type?";
+  static char* unknown = "Unknown Device Type";
   char* type = unknown;
 
   while (*KEEP_LOOPING && list_node != devlist && list_node != NULL) {
@@ -794,6 +821,9 @@ int list_devices(struct wii_device_list *devlist, char *option) {
       }
       if (dev->xwii == NULL) {
         printf("\tThis device is currently closed.\n");
+      }
+      if (dev->udev == NULL) {
+        printf("\tThis device is not connected.\n");
       }
       
 

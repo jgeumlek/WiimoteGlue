@@ -16,30 +16,34 @@
 #The map command sets control mappings, it has this format:
 #   map <mode> <wii input event> <gamepad output event>
 
-map nunchuk up up
-map nunchuk down down
-map nunchuk left left
-map nunchuk right right
-
-#the above commands map the dpad to the virtual dpad when
-#a nunchuk is plugged in. 
-#The word nunchuk above refers to 
-#"do this when the nunchuk is plugged in" 
-#Note that "up" still refers to the dpad, which is
-#not on the nunchuk, it is on the wiimote.
 
 map wiimote up left
 map wiimote left down
 map wiimote right up
 map wiimote down right
 
-#The above commands have maped the dpad to the virtual dpad
+#The above commands have mapped the wiimote dpad to the virtual dpad
 #when no extension is present. However, it is mapped "sideways".
+#This is desirable for holding the wiimote like an NES controller.
+
+map nunchuk up up
+map nunchuk down down
+map nunchuk left left
+map nunchuk right right
+
+#the above commands map the dpad to a virtual dpad when
+#a nunchuk is plugged in. 
+#The word nunchuk above refers to 
+#"do this when the nunchuk is plugged in" 
+#Note that "up" still refers to the dpad, which is
+#not on the nunchuk, it is on the wiimote.
 
 #Now when a nunchuk is plugged in, the dpad will be mapped 
 #"normally", but as soon as you remove the nunchuk,
 #the dpad will switch to the sideways mapping, without 
-#any extra effort. Pretty handy! Let's add some other buttons:
+#any extra effort. Pretty handy, eh? 
+
+#Let's add some other buttons:
 
 map wiimote a south
 map wiimote b east
@@ -49,6 +53,8 @@ map nunchuk a south
 #Now when the wiimote is alone, the B button acts like
 #a face button (east). Once the nunchuk is plugged in,
 #the B button becomes the right trigger.
+#[Reminder: Many games view "east", the rightmost button,
+# as a "cancel" or "go back" button"]
 
 
 #in both modes, the "A" button on the wiimote was
@@ -65,7 +71,11 @@ map nunchuk a south
 
 map wiimote accely left_x invert
 
-#This is a useful mapping for tilting a horizontal wiimote
+#The wiimotes y-accelerometer is now mapped
+#to the x-axis of the left thumbstick on a
+#virtual gamepad.
+#
+#This particular setup is for tilting a horizontal wiimote
 #left and right. Notice the optional "invert" at the end
 #to reverse the direction.
 #
@@ -82,24 +92,36 @@ enable wiimote accel
 
 #"ir" is another feature that is off by default.
 
-#enable wiimote ir
-#disable wiimote ir
+enable wiimote ir
+disable wiimote ir
+
+#Why would we want these disabled? They use up batteries!
+#When WiimoteGlue switches to mode with one of these
+#features disabled, the appropriate interfaces are closed
+#and the wiimote batteries are saved.
 
 #Instead of specifying each mode, you can use "all"
 #(later map commands can change this for a specific mapping)
 
 map all home mode
 
-#now all three modes have home set to mode.
+#now all three modes (wiimote,nunchuk,classic)
+#have home set to mode.
+#[Reminder: "mode" is the generic name for those special
+# buttons found often in the center of a controller,
+# such as the Xbox guide button.]
 
 
 
-#enter in "help" for all commands.
-#enter in "events" to see all recongized event names
+#use "help" for all commands.
+
+#use "events" to see all recongized event names
 #        for use with the "map" command.
+
 #similarly, "features" reminds you about the recognized
 #        features to enable/disable.
-#enter in "modes" to see the different mode names.
+
+#use "modes" to see the different mode names.
 
 #################
 # Saving Setups #
@@ -114,6 +136,9 @@ map all home mode
 #That "load" command will read the file line by line and
 #run the commands inside.
 
+#Commands are handled identically, whether loaded
+#from a file, or submitted to WiimoteGlue directly.
+
 ##############################
 # Changing Controller Slots  #
 ##############################
@@ -123,7 +148,7 @@ map all home mode
 assign <devname> 2
 
 #This will assign the device with ID "<devname>" to slot #2.
-#Use "list" to see the device IDs.
+#Use "list devices" to see the device IDs.
 
 #You can also use the lowercase bluetooth address in place
 #of the device id
@@ -162,7 +187,7 @@ slot 1 keyboardmouse
 #--------------------------
 
 #The fake keyboard maintains its own mapping, and the mapping
-#has all three modes (no extension/nunchuk/classic) too.
+#has all three modes (wiimote/nunchuk/classic) too.
 #
 #This is nice, since keyboard events are useless for fake
 #gamepads, and vice versa.
@@ -177,8 +202,8 @@ map gamepad nunchuk b tr2
 
 #The two above commands are identical, and they change
 #the mapping of the B button on the wiimote to TR2
-#when the nunchuk is plugged in, and the wiimote is
-#assigned to virtual gamepad.
+#when the nunchuk is plugged in.
+
 
 map keyboardmouse all b right_click
 map keyboardmouse wiimote a key_leftshift
@@ -192,10 +217,100 @@ map keyboardmouse wiimote a key_leftshift
 #The mode name is not optional. You must specify
 #wiimote, nunchuk, classic, or all
 
-#In the future, WiimoteGlue will support creating
-#other named mappings, allowing you to set up a
-#slot specific or device specific mapping, but
-#for now, there are just two named mappings:
-#"gamepad" and "keyboardmouse" and they are
-#treated specially.
+#WiimoteGlue starts with two named mappings:
+#keyboardmouse and gamepad
+
+list mappings
+
+#This will list all the mappings.
+
+#######################
+#######################
+## ADVANCED FEATURES ##
+#######################
+#######################
+
+
+#########################
+# Creating new mappings #
+#########################
+
+new mapping MyMap
+
+#This creates a new named mapping, with the
+#name "MyMap". It starts out with no buttons
+#mapped at all.
+
+#Why might you want a new mapping?
+#Perhaps player 2 wants a different mapping.
+#Maybe you want to create a control panel
+#of several wiimotes, with each button 
+#sending a unique event.
+#
+#You could even create a new named mapping
+#for each game/application you use, and 
+#set WiimoteGlue to read them all in when
+#starting up.
+
+#For now, you'll have to assign the new mappings
+#to use them.
+
+slot 1 mapping MyMap
+
+#Now slot 1 will use the MyMap mapping.
+
+new mapping OtherMap
+
+device dev1 mapping OtherMap
+
+#Now dev1 will use the MyMap mapping.
+#(Replace dev1 with <devname> for other devices...)
+
+#Note that device-specific mappings take
+#priority. If dev1 was assigned to
+#slot 1, OtherMap will be used for dev1
+#despite slot 1 using MyMap.
+
+####################
+# Balance Board    #
+####################
+
+#A Wii balance board will be assigned to the first
+#slot that doesn't have a board already.
+
+#This means a slot can have both controller inputs
+#and board inputs combined.
+
+#A balance board is considered to ALWAYS be in the
+#"wiimote" mode.
+
+####################
+# Device renaming  #
+####################
+
+#Don't like the look of "dev1"?
+
+device dev1 rename NewName
+
+#Note that bluetooth addresses can always be
+#used to specify a device, no matter what
+#its name changed to.
+
+#As a special case, the following command
+#works even before a device is connected:
+
+device <bluetooth-addr> rename <name>
+
+#This will create a listing for that address
+#with the given name.
+
+#Now you can set up all sorts of settings for
+#that device just like it was connected, and
+#when it shows up, it will be matched up.
+
+#For example, you might want have a file at 
+#startup for WiimoteGlue that renames all your
+#known controller addresses to more friendly
+#distinctive names.
+
 

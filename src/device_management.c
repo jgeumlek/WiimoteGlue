@@ -11,9 +11,40 @@
  *so here it is.
  */
 
+struct wii_device_list* new_wii_device(struct wiimoteglue_state *state, char* uniq) {
+  struct wii_device_list *list_node = calloc(1,sizeof(struct wii_device_list));
+  struct wii_device *dev = calloc(1,sizeof(struct wii_device));
+  list_node->dev = dev;
+  dev->main_list = list_node;
+  dev->slot_list = calloc(1,sizeof(struct wii_device_list));
+  dev->slot_list->dev = dev;
+
+  dev->bluetooth_addr = malloc(18*sizeof(char));
+  strncpy(dev->bluetooth_addr, uniq, 17);
+  dev->bluetooth_addr[17] = '\0';
+
+  dev->id = calloc(WG_MAX_NAME_SIZE,sizeof(char));
+  snprintf(dev->id,WG_MAX_NAME_SIZE,"dev%d",++(state->dev_count));
+  
+  dev->original_leds[0] = -2;
+  dev->type = UNKNOWN;
+
+  printf("\tid: %s\n\taddress %s\n",dev->id, dev->bluetooth_addr);
+
+  list_node->next = &state->dev_list;
+  list_node->prev = state->dev_list.prev;
+
+  if (list_node->next != NULL)
+    list_node->next->prev = list_node;
+
+  if (list_node->prev != NULL)
+    list_node->prev->next = list_node;
+  
+  return list_node;
+}
+
 int add_wii_device(struct wiimoteglue_state *state, struct udev_device* udev) {
   
-  char* syspath = udev_device_get_syspath(udev);
   
   char* uniq = udev_device_get_property_value(udev, "HID_UNIQ");
   
@@ -21,33 +52,10 @@ int add_wii_device(struct wiimoteglue_state *state, struct udev_device* udev) {
   
   if (dev == NULL) {
   
-    struct wii_device_list *list_node = calloc(1,sizeof(struct wii_device_list));
-    dev= calloc(1,sizeof(struct wii_device));
-    list_node->dev = dev;
-    dev->main_list = list_node;
-    dev->slot_list = calloc(1,sizeof(struct wii_device_list));
-    dev->slot_list->dev = dev;
-
-    dev->bluetooth_addr = malloc(18*sizeof(char));
-    strncpy(dev->bluetooth_addr, uniq, 17);
-    dev->bluetooth_addr[17] = '\0';
-
-    dev->id = calloc(WG_MAX_NAME_SIZE,sizeof(char));
-    snprintf(dev->id,WG_MAX_NAME_SIZE,"dev%d",++(state->dev_count));
+    struct wii_device_list* node = new_wii_device(state,uniq);
+    node->dev->udev = udev;
+    dev = node->dev;
     
-    dev->udev = udev;
-    dev->original_leds[0] = -2;
-
-    printf("\tid: %s\n\taddress %s\n",dev->id, dev->bluetooth_addr);
-
-    list_node->next = &state->dev_list;
-    list_node->prev = state->dev_list.prev;
-
-    if (list_node->next != NULL)
-      list_node->next->prev = list_node;
-
-    if (list_node->prev != NULL)
-      list_node->prev->next = list_node;
   
   } else {
     
@@ -57,8 +65,11 @@ int add_wii_device(struct wiimoteglue_state *state, struct udev_device* udev) {
   }
   
   open_wii_device(state, dev);
+  remove_device_from_slot(dev);
   
-  auto_assign_slot(state, dev);
+  if (dev->slot == NULL) {
+    auto_assign_slot(state, dev);
+  }
   
   if (dev->slot == NULL) {
     close_wii_device(state,dev);
@@ -67,9 +78,15 @@ int add_wii_device(struct wiimoteglue_state *state, struct udev_device* udev) {
   return 0;
 }
 
+
+
 int open_wii_device(struct wiimoteglue_state *state, struct wii_device* dev) {
   if (dev->xwii != NULL) {
     return 0; //Already open.
+  }
+  
+  if (dev->udev == NULL) {
+    return -1; //Not even connected.
   }
   
   int i;
