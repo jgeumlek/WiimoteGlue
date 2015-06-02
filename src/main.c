@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
   set_slot_specific_mappings(&state.slots[0],&keymouse->maps);
 
 
-  /*The device llist is cyclic*/
+  /*The device list is cyclic*/
   state.dev_list.next = &state.dev_list;
   state.dev_list.prev = &state.dev_list;
 
@@ -198,6 +198,7 @@ int main(int argc, char *argv[]) {
     struct wii_device_list *next = list_node->next;
 
     close_wii_device(&state,list_node->dev);
+    forget_wii_device(&state,list_node->dev);
 
     list_node = next;
   }

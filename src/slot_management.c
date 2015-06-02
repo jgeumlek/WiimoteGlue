@@ -59,7 +59,7 @@ int add_device_to_slot(struct wiimoteglue_state* state, struct wii_device *dev, 
 
   if (slot == NULL) {
     ret = set_led_state(state,dev,no_slot_leds);
-    if (ret < 0)
+    if (ret < 0 && ret != -2)
       printf("There were errors on setting the LEDs. Permissions?\n");
 
     return 0; /*This is actually okay!*/
@@ -104,7 +104,7 @@ int add_device_to_slot(struct wiimoteglue_state* state, struct wii_device *dev, 
     ret = set_led_state(state,dev,&slot_leds[num]);
   }
 
-  if (ret < 0)
+  if (ret < 0 && ret != -2)
     printf("There were errors on setting the LEDs. Permissions?\n");
 
   compute_device_map(state,dev);

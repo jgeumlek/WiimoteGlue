@@ -574,6 +574,12 @@ int assign_device(struct wiimoteglue_state *state, char *devname, char *slotname
     printf("Something went wrong when adding to new slot.\n");
     return -1;
   }
+  
+  if (device->slot == NULL) {
+    close_wii_device(state,device);
+  } else {
+    open_wii_device(state,device);
+  }
 
   return 0;
 
@@ -784,8 +790,12 @@ int list_devices(struct wii_device_list *devlist, char *option) {
 	if (dev->slot->slot_specific_mappings != NULL)
 	    printf("\t (slot has a specific mapping: %s)\n",dev->slot->slot_specific_mappings->name);
       } else {
-	printf("\tNot assigned to any slot");
+	printf("\tNot assigned to any slot\n");
       }
+      if (dev->xwii == NULL) {
+        printf("\tThis device is currently closed.\n");
+      }
+      
 
     }
 

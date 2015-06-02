@@ -72,6 +72,8 @@ struct wii_device {
 
   char* id;
   char* bluetooth_addr;
+  
+  struct udev_device* udev;
 
   enum DEVICE_TYPE { REMOTE, BALANCE, PRO} type;
 

@@ -54,22 +54,18 @@ int wiimoteglue_udev_enumerate(struct wiimoteglue_state *state, struct udev **ud
   devices = udev_enumerate_get_list_entry(enumerate);
 
   udev_list_entry_foreach(dev_list_entry, devices) {
-    const char* syspath;
     const char* driver;
     const char* subsystem;
-    const char* uniq; /*should be the bluetooth MAC*/
     const char* path;
     path = udev_list_entry_get_name(dev_list_entry);
     dev = udev_device_new_from_syspath(*udev, path);
-    syspath = udev_device_get_syspath(dev);
     driver = udev_device_get_driver(dev);
     subsystem = udev_device_get_subsystem(dev);
-    uniq = udev_device_get_property_value(dev, "HID_UNIQ");
 
 
     if (subsystem != NULL && strcmp(subsystem, "hid") == 0) {
       if (driver != NULL && strcmp(driver,"wiimote") == 0) {
-	add_wii_device(state,syspath,uniq);
+	add_wii_device(state,udev_device_ref(dev));
       }
     }
 
@@ -88,15 +84,11 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
   dev = udev_monitor_receive_device(state->monitor);
   if (dev) {
     const char* action;
-    const char* syspath;
     const char* driver;
     const char* subsystem;
-    const char* uniq; /*should be the bluetooth MAC*/
     action = udev_device_get_action(dev);
-    syspath = udev_device_get_syspath(dev);
     driver = udev_device_get_driver(dev);
     subsystem = udev_device_get_subsystem(dev);
-    uniq = udev_device_get_property_value(dev, "HID_UNIQ");
 
 
     if (strcmp(action,"change") == 0) {
@@ -105,7 +97,7 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
       if (subsystem != NULL && strcmp(subsystem, "hid") == 0) {
 	if (driver != NULL && strcmp(driver,"wiimote") == 0) {
 
-	  add_wii_device(state,syspath,uniq);
+	  add_wii_device(state,udev_device_ref(dev));
 	}
       }
     }
