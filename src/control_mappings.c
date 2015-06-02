@@ -29,10 +29,13 @@ int compute_device_map(struct wiimoteglue_state* state, struct wii_device* dev) 
 
   if (dev->ifaces & XWII_IFACE_NUNCHUK) {
     dev->map = &maps->mode_nunchuk;
+    dev->mode = NUNCHUK;
   } else if (dev->ifaces & (XWII_IFACE_CLASSIC_CONTROLLER | XWII_IFACE_PRO_CONTROLLER)) {
     dev->map = &maps->mode_classic;
+    dev->mode = CLASSIC;
   } else {
     dev->map = &maps->mode_no_ext;
+    dev->mode = NO_EXT;
   }
 
   wiimoteglue_update_wiimote_ifaces(dev);

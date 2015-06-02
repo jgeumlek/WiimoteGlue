@@ -793,20 +793,28 @@ int list_devices(struct wii_device_list *devlist, char *option) {
   static char* pro = "Wii U Pro Controller";
   static char* board = "Balance Board";
   static char* unknown = "Unknown Device Type";
+  static char* nunchuk = " + Nunchuk";
+  static char* classic = " + Classic Controller";
   char* type = unknown;
+  char* ext = "";
 
   while (*KEEP_LOOPING && list_node != devlist && list_node != NULL) {
     struct wii_device* dev = list_node->dev;
     if (dev != NULL) {
-      if (dev->type == REMOTE)
+      if (dev->type == REMOTE) {
 	type = wiimote;
+        if (dev->mode == NUNCHUK)
+          ext = nunchuk;
+        if (dev->mode == CLASSIC)
+          ext = classic;
+      }
       if (dev->type == PRO)
 	type = pro;
       if (dev->type == BALANCE)
 	type = board;
 
       printf("\n- %s (%s)\n",dev->id,dev->bluetooth_addr);
-      printf("\t%s\n",type);
+      printf("\t%s%s\n",type,ext);
       if (dev->dev_specific_mappings != NULL) {
           printf("\tDevice specific mapping: %s\n",dev->dev_specific_mappings->name);
       }

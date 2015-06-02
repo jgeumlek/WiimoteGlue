@@ -62,6 +62,31 @@ int wiimoteglue_update_wiimote_ifaces(struct wii_device *dev) {
     }
 }
 
+int wiimoteglue_update_extensions(struct wiimoteglue_state *state, struct wii_device *dev) {
+  xwii_iface_open(dev->xwii,XWII_IFACE_CLASSIC_CONTROLLER | XWII_IFACE_NUNCHUK | XWII_IFACE_PRO_CONTROLLER | XWII_IFACE_BALANCE_BOARD);
+  dev->ifaces = xwii_iface_opened(dev->xwii);
+
+  compute_device_map(state,dev);
+
+  if (dev->map->accel_active) {
+    xwii_iface_open(dev->xwii,XWII_IFACE_ACCEL);
+  } else {
+    xwii_iface_close(dev->xwii,XWII_IFACE_ACCEL);
+  }
+
+  if (dev->map->IR_count) {
+    xwii_iface_open(dev->xwii,XWII_IFACE_IR);
+  } else {
+    xwii_iface_close(dev->xwii,XWII_IFACE_IR);
+  }
+
+  if (xwii_iface_available(dev->xwii) == 0 || dev->ifaces == 0) {
+    //Controller removed.
+    close_wii_device(state, dev);
+  }
+
+  return 0;
+}
 
 
 int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_device *dev) {
@@ -114,27 +139,7 @@ int wiimoteglue_handle_wii_event(struct wiimoteglue_state *state, struct wii_dev
       break;
     case XWII_EVENT_WATCH:
     case XWII_EVENT_GONE:
-      xwii_iface_open(dev->xwii,XWII_IFACE_CLASSIC_CONTROLLER | XWII_IFACE_NUNCHUK | XWII_IFACE_PRO_CONTROLLER | XWII_IFACE_BALANCE_BOARD);
-      dev->ifaces = xwii_iface_opened(dev->xwii);
-
-      compute_device_map(state,dev);
-
-      if (dev->map->accel_active) {
-	xwii_iface_open(dev->xwii,XWII_IFACE_ACCEL);
-      } else {
-	xwii_iface_close(dev->xwii,XWII_IFACE_ACCEL);
-      }
-
-      if (dev->map->IR_count) {
-	xwii_iface_open(dev->xwii,XWII_IFACE_IR);
-      } else {
-	xwii_iface_close(dev->xwii,XWII_IFACE_IR);
-      }
-
-      if (xwii_iface_available(dev->xwii) == 0 || dev->ifaces == 0) {
-	//Controller removed.
-	close_wii_device(state, dev);
-      }
+      wiimoteglue_update_extensions(state,dev);
       break;
 
     }

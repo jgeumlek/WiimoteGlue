@@ -25,6 +25,7 @@ int wiimoteglue_udev_monitor_init(struct udev **udev, struct udev_monitor **moni
 
   *monitor = udev_monitor_new_from_netlink(*udev,"udev");
   udev_monitor_filter_add_match_subsystem_devtype(*monitor,"hid",NULL);
+  udev_monitor_filter_add_match_subsystem_devtype(*monitor,"input",NULL);
 
   udev_monitor_enable_receiving(*monitor);
 
@@ -61,6 +62,7 @@ int wiimoteglue_udev_enumerate(struct wiimoteglue_state *state, struct udev **ud
     dev = udev_device_new_from_syspath(*udev, path);
     driver = udev_device_get_driver(dev);
     subsystem = udev_device_get_subsystem(dev);
+    
 
 
     if (subsystem != NULL && strcmp(subsystem, "hid") == 0) {
@@ -89,7 +91,7 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
     action = udev_device_get_action(dev);
     driver = udev_device_get_driver(dev);
     subsystem = udev_device_get_subsystem(dev);
-
+    
 
     if (strcmp(action,"change") == 0) {
       //It seems "change" happens once the wiimote is ready,
@@ -102,7 +104,23 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
       }
     }
     
+    if (strcmp(action,"add") == 0) {
+      struct udev_device *parentdev = udev_device_get_parent_with_subsystem_devtype(dev,"hid",NULL);
+      char* syspath = udev_device_get_syspath(parentdev);
+      struct wii_device *wiidev = lookup_syspath(&state->dev_list,syspath);
+      if (wiidev != NULL)
+        wiimoteglue_update_extensions(state,wiidev);
+    }
+    
     if (strcmp(action,"remove") == 0) {
+      
+      if (subsystem != NULL && strcmp(subsystem, "input")) {
+        struct udev_device *parentdev = udev_device_get_parent_with_subsystem_devtype(dev,"hid",NULL);
+        char* syspath = udev_device_get_syspath(parentdev);
+        struct wii_device *wiidev = lookup_syspath(&state->dev_list,syspath);
+        if (wiidev != NULL)
+          wiimoteglue_update_extensions(state,wiidev);
+      }
       
       if (subsystem != NULL && strcmp(subsystem, "hid") == 0) {
 	
@@ -139,6 +157,9 @@ int wiimoteglue_udev_handle_event(struct wiimoteglue_state *state) {
 struct wii_device * lookup_syspath(struct wii_device_list *devlist, char *syspath) {
 
   if (devlist == NULL) {
+    return NULL;
+  }
+  if (syspath == NULL) {
     return NULL;
   }
 
