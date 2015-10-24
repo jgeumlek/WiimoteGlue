@@ -177,13 +177,13 @@ void process_command(struct wiimoteglue_state *state, char *args[]) {
     printf("up, down, left, right, a, b, c, x, y, z, plus, minus, home, 1, 2, l, r, zl, zr, thumbl, thumbr\n\n");
 
     printf("The recognized names for input axes are:\n");
-    printf("\taccel_x - wiimote acceleration x (tilt forward/back)\n");
-    printf("\taccel_y - wiimote acceleration y (tilt left/right)\n");
-    printf("\taccel_z - wiimote acceleration z\n");
+    printf("\taccelx - wiimote acceleration x (tilt forward/back)\n");
+    printf("\taccely - wiimote acceleration y (tilt left/right)\n");
+    printf("\taccelz - wiimote acceleration z\n");
     printf("\tir_x,ir_y - Infared \"pointer\" axes.\n");
-    printf("\tn_accel_x - nunchuk acceleration x (tilt forward/back)\n");
-    printf("\tn_accel_y - nunchuk acceleration y (tilt left/right)\n");
-    printf("\tn_accel_z - nunchuk acceleration z\n");
+    printf("\tn_accelx - nunchuk acceleration x (tilt forward/back)\n");
+    printf("\tn_accely - nunchuk acceleration y (tilt left/right)\n");
+    printf("\tn_accelz - nunchuk acceleration z\n");
     printf("\tn_x, n_y - nunchuck control stick axes\n");
     printf("\tleft_x, left_y - classic/pro left stick axes\n");
     printf("\tright_x, right_y - classic/pro right stick axes\n");
