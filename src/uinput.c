@@ -174,7 +174,7 @@ int open_uinput_keyboardmouse_fd(char* uinput_path) {
   /*Just set all possible keys that come before BTN_MISC
    * This should cover all reasonable keyboard keys.*/
   ioctl(fd, UI_SET_EVBIT, EV_KEY);
-  for (i = 2; i < BTN_MISC; i++) {
+  for (i = KEY_ESC; i < BTN_MISC; i++) {
     ioctl(fd, UI_SET_KEYBIT, i);
   }
   for (i = KEY_OK; i < KEY_MAX; i++) {
