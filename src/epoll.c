@@ -64,7 +64,9 @@ void wiimoteglue_epoll_loop(int epfd, struct wiimoteglue_state *state) {
       } else if (events[i].data.ptr == state) {
 	//HANDLE USER INPUT
 	state->load_lines = 0;
-	wiimoteglue_handle_input(state,0);
+	int ret = wiimoteglue_handle_input(state,0);
+        if (ret < 0)
+          close(0);
 	printf("\n>>");
 	fflush(stdout);
       } else {

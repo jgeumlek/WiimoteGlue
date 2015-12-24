@@ -307,7 +307,7 @@ void update_mapping(struct wiimoteglue_state *state, struct mode_mappings* maps,
 
   if (maps == NULL || mode == NULL || in == NULL || out == NULL) {
     printf("Invalid command format.\n");
-    printf("usage: map [gamepad|keyboardmouse] <mode> <wii input> <gamepad output> [invert]\n");
+    printf("usage: map [mapname] <mode> <wii input> <gamepad output> [invert]\n");
     printf("If the gamepad/keyboardmouse specifier is omitted, gamepad is assumed.\n");
     return;
   }
