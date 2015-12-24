@@ -3,6 +3,8 @@
 
 (Tested only on Arch Linux, 64-bit)
 
+This project is not under active development, but will still respond to bug reports. It's successor is MoltenGamepad, which aims to offer the same ease of use with wiimotes while also including other devices as well.
+
 ##Building
 
     make
